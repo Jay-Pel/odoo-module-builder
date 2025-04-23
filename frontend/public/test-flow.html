@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Flow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Flow for Odoo Module Builder</h1>
+    <p>This page will set a planId in session storage and then navigate to the module output page.</p>
+    
+    <h2>Current Session Storage:</h2>
+    <pre id="current-storage"></pre>
+    
+    <button id="set-plan-id">Set Plan ID and Navigate</button>
+
+    <script>
+        // Display current storage
+        function updateStorageDisplay() {
+            const storageEl = document.getElementById('current-storage');
+            const sessionPlanId = sessionStorage.getItem('planId');
+            const localPlanId = localStorage.getItem('planId');
+            const planId = getValue('planId');
+            
+            storageEl.textContent = JSON.stringify({
+                sessionStorage: { planId: sessionPlanId },
+                localStorage: { planId: localPlanId },
+                effectiveValue: { planId: planId }
+            }, null, 2);
+        }
+
+        // Update display on load
+        updateStorageDisplay();
+
+        // Helper functions to mimic the sessionService.js functionality
+        function storeValue(key, value) {
+            sessionStorage.setItem(key, value);
+            localStorage.setItem(key, value);
+        }
+        
+        function getValue(key) {
+            return sessionStorage.getItem(key) || localStorage.getItem(key);
+        }
+        
+        function removeValue(key) {
+            sessionStorage.removeItem(key);
+            localStorage.removeItem(key);
+        }
+        
+        // Set plan ID and navigate
+        document.getElementById('set-plan-id').addEventListener('click', function() {
+            // Clear any existing storage
+            sessionStorage.clear();
+            localStorage.clear();
+            
+            // Set a test plan ID using our helper function
+            const planId = 'test-plan-id-' + Date.now();
+            storeValue('planId', planId);
+            
+            // Also set a specificationId to simulate the full flow
+            const specId = 'test-spec-id-' + Date.now();
+            storeValue('specificationId', specId);
+            
+            // Update display
+            updateStorageDisplay();
+            
+            // Show a message
+            const storageEl = document.getElementById('current-storage');
+            storageEl.innerHTML += '<div style="margin-top: 10px; color: green;">Storage set in both sessionStorage and localStorage! Navigating in 3 seconds...</div>';
+            
+            // Navigate to module output page after a longer delay to ensure storage is set
+            setTimeout(() => {
+                window.location.href = '/module-output';
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
