@@ -1,88 +1,97 @@
 import React from 'react';
-import { ErrorBoundary as ReactErrorBoundary } from 'react-error-boundary';
 import styled from 'styled-components';
 
 const ErrorContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 2rem;
-  margin: 2rem auto;
-  max-width: 800px;
-  background-color: #fff1f0;
-  border: 1px solid #ffccc7;
-  border-radius: 0.5rem;
+  margin: 1rem;
+  border-radius: 8px;
+  background-color: ${({ theme }) => theme.colors.error}15;
+  border: 1px solid ${({ theme }) => theme.colors.error};
 `;
 
-const ErrorHeading = styled.h2`
-  color: #cf1322;
+const ErrorTitle = styled.h2`
+  color: ${({ theme }) => theme.colors.error};
   margin-bottom: 1rem;
 `;
 
-const ErrorMessage = styled.div`
+const ErrorMessage = styled.p`
+  color: ${({ theme }) => theme.colors.text.primary};
   margin-bottom: 1rem;
+  text-align: center;
 `;
 
-const ErrorStack = styled.pre`
-  margin-top: 1rem;
-  padding: 1rem;
-  background-color: #f5f5f5;
-  border-radius: 0.25rem;
-  overflow: auto;
-  font-size: 0.85rem;
-`;
-
-const ResetButton = styled.button`
+const RetryButton = styled.button`
   padding: 0.5rem 1rem;
-  background-color: #1890ff;
+  background-color: ${({ theme }) => theme.colors.primary.main};
   color: white;
   border: none;
-  border-radius: 0.25rem;
+  border-radius: 4px;
   cursor: pointer;
-  font-weight: 500;
-  
+  transition: all 0.2s ease;
+
   &:hover {
-    background-color: #096dd9;
+    background-color: ${({ theme }) => theme.colors.primary.dark};
   }
 `;
 
-const ErrorFallback = ({ error, resetErrorBoundary }) => {
-  return (
-    <ErrorContainer role="alert">
-      <ErrorHeading>Something went wrong!</ErrorHeading>
-      <ErrorMessage>
-        <p>The application encountered an error. You can try the following:</p>
-        <ul style={{ marginLeft: '1.5rem', marginTop: '0.5rem' }}>
-          <li>Refresh the page</li>
-          <li>Clear your browser cache</li>
-          <li>Check console for more details</li>
-        </ul>
-      </ErrorMessage>
-      <ErrorStack>{error.message}</ErrorStack>
-      {error.stack && (
-        <details>
-          <summary>Stack trace</summary>
-          <ErrorStack>{error.stack}</ErrorStack>
-        </details>
-      )}
-      <div style={{ marginTop: '1.5rem' }}>
-        <ResetButton onClick={resetErrorBoundary}>Try Again</ResetButton>
-      </div>
-    </ErrorContainer>
-  );
-};
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { 
+      hasError: false,
+      error: null,
+      errorInfo: null
+    };
+  }
 
-const ErrorBoundary = ({ children }) => {
-  const handleReset = () => {
-    // You can add custom reset logic here if needed
-    window.location.href = '/';
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    this.setState({
+      error: error,
+      errorInfo: errorInfo
+    });
+    
+    // Log the error to your error reporting service
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  handleRetry = () => {
+    this.setState({ 
+      hasError: false,
+      error: null,
+      errorInfo: null
+    });
   };
 
-  return (
-    <ReactErrorBoundary
-      FallbackComponent={ErrorFallback}
-      onReset={handleReset}
-    >
-      {children}
-    </ReactErrorBoundary>
-  );
-};
+  render() {
+    if (this.state.hasError) {
+      return (
+        <ErrorContainer>
+          <ErrorTitle>Something went wrong</ErrorTitle>
+          <ErrorMessage>
+            {this.props.fallback || 'An unexpected error occurred. Please try again.'}
+          </ErrorMessage>
+          {this.state.error && (
+            <ErrorMessage>
+              {this.state.error.toString()}
+            </ErrorMessage>
+          )}
+          <RetryButton onClick={this.handleRetry}>
+            Try Again
+          </RetryButton>
+        </ErrorContainer>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default ErrorBoundary; 

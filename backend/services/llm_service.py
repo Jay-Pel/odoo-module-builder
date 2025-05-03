@@ -23,9 +23,16 @@ class LLMService:
         else:
             print("Anthropic API key loaded successfully.")
         
-        # Initialize Anthropic client - with simple initialization to avoid proxies parameter issue
+        # Initialize Anthropic client - with explicit parameters to avoid issues
         if self.anthropic_api_key:
-            self.client = Anthropic(api_key=self.anthropic_api_key)
+            try:
+                # First try with just the API key
+                self.client = Anthropic(api_key=self.anthropic_api_key)
+            except TypeError as e:
+                # If that fails, try creating a partial client for basic functionality
+                print(f"WARNING: Error creating Anthropic client: {e}")
+                print("Using mock mode for LLM services")
+                self.client = None
         else:
             self.client = None
         

@@ -40,7 +40,7 @@ const LogoIcon = styled(FaCode)`
 
 const Nav = styled.nav`
   @media (max-width: ${({ theme }) => theme.breakpoints.md}) {
-    display: ${({ isOpen }) => (isOpen ? 'flex' : 'none')};
+    display: ${({ $isOpen }) => ($isOpen ? 'flex' : 'none')};
     position: absolute;
     top: 70px;
     left: 0;
@@ -124,27 +124,27 @@ function Header() {
           <FaBars />
         </MenuButton>
         
-        <Nav isOpen={isMenuOpen}>
+        <Nav $isOpen={isMenuOpen}>
           <NavLink to="/" active={location.pathname === '/' ? 1 : 0}>
             Home
           </NavLink>
           <NavLink to="/chat" active={location.pathname === '/chat' ? 1 : 0}>
             Build Module
           </NavLink>
-          <NavLink 
-            to="/specification-review" 
+          <NavLink
+            to="/specification-review"
             active={location.pathname === '/specification-review' ? 1 : 0}
           >
             Specifications
           </NavLink>
-          <NavLink 
-            to="/development-plan" 
+          <NavLink
+            to="/development-plan"
             active={location.pathname === '/development-plan' ? 1 : 0}
           >
             Development
           </NavLink>
-          <NavLink 
-            to="/module-output" 
+          <NavLink
+            to="/module-output"
             active={location.pathname === '/module-output' ? 1 : 0}
           >
             Output

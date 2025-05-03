@@ -6,6 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default {
+  devtool: 'source-map',
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -46,6 +47,10 @@ export default {
       {
         test: /\.(png|svg|jpg|jpeg|gif)$/i,
         type: 'asset/resource',
+      },
+      {
+        test: /\.(woff|woff2|eot|ttf|otf)$/i,
+        type: 'asset/resource',
       }
     ]
   },
@@ -59,7 +64,7 @@ export default {
   ],
   devServer: {
     historyApiFallback: true,
-    port: 3457,
+    port: 3000,
     hot: true,
     open: true,
     proxy: [

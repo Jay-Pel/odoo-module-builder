@@ -1,12 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Link } from 'react-router-dom';
-// Import the simplified wave background
+import { useNavigate } from 'react-router-dom';
 import SimpleWaveBackground from '../components/Hero/SimpleWaveBackground.jsx';
-// Other complex components remain commented out
-// import ParticleSphere from '../components/Hero/ParticleSphere.jsx';
-// import InteractiveGradientSphere from '../components/Hero/InteractiveGradientSphere.jsx';
-// import ShaderButton from '../components/Hero/ShaderButton.jsx';
+import { useModuleSession } from '../hooks/useModuleSession.js';
 
 const HomeContainer = styled.div`
   display: flex;
@@ -43,19 +39,57 @@ const ButtonContainer = styled.div`
   z-index: 5;
 `;
 
+const LoadingSpinner = styled.div`
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 3px solid white;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+  display: inline-block;
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
+const ErrorMessage = styled.div`
+  color: ${({ theme }) => theme.colors.error};
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  background-color: ${({ theme }) => theme.colors.error}15;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
 const StyledButton = styled.button`
   padding: 0.75rem 1.5rem;
-  background-color: ${({ theme }) => theme.colors.primary.main};
+  background-color: ${({ theme, disabled }) => 
+    disabled ? theme.colors.disabled : theme.colors.primary.main};
   color: white;
   border: none;
   border-radius: 0.5rem;
   font-weight: 600;
-  cursor: pointer;
+  cursor: ${({ disabled }) => (disabled ? 'not-allowed' : 'pointer')};
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
   
   &:hover {
-    background-color: ${({ theme }) => theme.colors.primary.dark};
-    transform: translateY(-2px);
+    background-color: ${({ theme, disabled }) => 
+      disabled ? theme.colors.disabled : theme.colors.primary.dark};
+    transform: ${({ disabled }) => (disabled ? 'none' : 'translateY(-2px)')};
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
   }
 `;
 
@@ -91,20 +125,42 @@ const FeatureDescription = styled.p`
 `;
 
 const Home = () => {
-  const handleDirectCreateSession = () => {
-    // Navigate to chat for starting a new module
-    console.log('Starting new module');
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const { start, setStep } = useModuleSession();
+
+  const handleDirectCreateSession = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Start a new module session
+      start({
+        name: '',
+        description: '',
+        version: '1.0.0.0.1',
+        license: 'LGPL-3',
+        created: new Date().toISOString()
+      });
+      
+      // Set initial step
+      setStep('requirements');
+      
+      // Navigate to the module creation wizard
+      navigate('/create-module');
+    } catch (err) {
+      setError('Failed to start module creation. Please try again.');
+      console.error('Session creation error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <HomeContainer>
-      {/* Use the simplified wave background */}
       <SimpleWaveBackground />
-      {/* Other complex components remain commented out */}
-      {/* <ParticleSphere /> */}
-      {/* <InteractiveGradientSphere /> */}
 
-      {/* Content */}
       <Title>Build Custom Odoo Modules with Ease</Title>
       <Subtitle>
         Generate, test, and deploy Odoo ERP modules through a guided,
@@ -112,10 +168,26 @@ const Home = () => {
       </Subtitle>
       
       <ButtonContainer>
-        {/* Use the regular styled button */}
-        <StyledButton onClick={handleDirectCreateSession}>
-          Start Building Now
+        <StyledButton 
+          onClick={handleDirectCreateSession}
+          disabled={isLoading}
+          data-testid="create-module-btn"
+        >
+          {isLoading ? (
+            <>
+              <LoadingSpinner />
+              Starting...
+            </>
+          ) : (
+            'Start Building Now'
+          )}
         </StyledButton>
+        {error && (
+          <ErrorMessage>
+            <span>⚠️</span>
+            {error}
+          </ErrorMessage>
+        )}
       </ButtonContainer>
       
       <FeatureContainer>

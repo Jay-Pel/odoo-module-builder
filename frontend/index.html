@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Odoo Module Builder</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/react-router-dom@6.3.0/umd/react-router-dom.production.min.js"></script>
+  <script src="https://unpkg.com/framer-motion@6.3.3/dist/framer-motion.js"></script>
+  <style>
+    /* Simple wave background styling to simulate our actual component */
+    .wave-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, #4158D0, #C850C0, #FFCC70);
+      opacity: 0.1;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+  <div id="root"></div>
+
+  <!-- Mock implementation for testing purposes -->
+  <script>
+    // Mock React components for our test scenario
+    const App = () => {
+      const isHome = window.location.pathname === '/' || window.location.pathname === '';
+      const isCreateModule = window.location.pathname.includes('/create-module');
+      
+      return React.createElement('div', { className: 'app-container' },
+        React.createElement(Header),
+        isHome ? React.createElement(HomePage) : 
+        isCreateModule ? React.createElement(ModuleWizard) : 
+        React.createElement('div', null, 'Page not found')
+      );
+    };
+    
+    const Header = () => {
+      return React.createElement('header', { className: 'bg-white dark:bg-gray-800 shadow-sm p-4' },
+        React.createElement('div', { className: 'container mx-auto flex justify-between items-center' },
+          React.createElement('h1', { className: 'text-xl font-bold text-blue-600' }, 'Odoo Module Builder'),
+          React.createElement('nav', null, 
+            React.createElement('a', { href: '/', className: 'text-gray-600 hover:text-blue-600 mx-2' }, 'Home'),
+            React.createElement('a', { href: '/dashboard', className: 'text-gray-600 hover:text-blue-600 mx-2' }, 'Dashboard')
+          )
+        )
+      );
+    };
+    
+    const HomePage = () => {
+      return React.createElement('div', { className: 'container mx-auto px-4 py-12 text-center' },
+        React.createElement('div', { className: 'wave-bg' }),
+        React.createElement('h1', { className: 'text-4xl font-bold mb-6 text-gray-800 dark:text-white' }, 
+          'Build Custom Odoo Modules with Ease'
+        ),
+        React.createElement('p', { className: 'text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-8' },
+          'Generate, test, and deploy Odoo ERP modules through a guided, conversational interface powered by AI.'
+        ),
+        React.createElement('button', { 
+          className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all',
+          onClick: () => { window.location.href = '/create-module'; },
+          'data-testid': 'create-module-btn'
+        }, 'Start Building Now')
+      );
+    };
+    
+    // Module Steps - For testing the workflow
+    const ModuleWizard = () => {
+      const [currentStep, setCurrentStep] = React.useState('requirements');
+      const steps = ['requirements', 'specification', 'development_plan', 'module_output'];
+      
+      const handleNextStep = () => {
+        const currentIndex = steps.indexOf(currentStep);
+        if (currentIndex < steps.length - 1) {
+          setCurrentStep(steps[currentIndex + 1]);
+        }
+      };
+      
+      return React.createElement('div', { className: 'container mx-auto px-4 py-8' },
+        React.createElement('div', { className: 'max-w-4xl mx-auto' },
+          React.createElement('h1', { className: 'text-3xl font-bold mb-6' }, 'Create Your Odoo Module'),
+          
+          // Progress bar
+          React.createElement('div', { className: 'mb-8' },
+            React.createElement('div', { className: 'h-2 bg-gray-200 rounded-full' },
+              React.createElement('div', { 
+                className: 'h-full bg-blue-500 rounded-full transition-all duration-300',
+                style: { width: `${((steps.indexOf(currentStep) + 1) / steps.length) * 100}%` }
+              })
+            ),
+            React.createElement('div', { className: 'flex justify-between mt-4' },
+              steps.map((step, index) => {
+                const isCompleted = steps.indexOf(currentStep) > index;
+                const isCurrent = currentStep === step;
+                
+                return React.createElement('div', { key: step, className: 'flex flex-col items-center' },
+                  React.createElement('div', { 
+                    className: `w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                      isCompleted ? 'bg-blue-500 border-blue-500 text-white' :
+                      isCurrent ? 'border-blue-500 text-blue-500' :
+                      'border-gray-300 text-gray-300'
+                    }`
+                  }, index + 1),
+                  React.createElement('span', { 
+                    className: `mt-2 text-sm ${
+                      isCurrent ? 'text-blue-500 font-medium' :
+                      isCompleted ? 'text-gray-700' : 'text-gray-400'
+                    }`
+                  }, step.replace('_', ' ').charAt(0).toUpperCase() + step.replace('_', ' ').slice(1))
+                );
+              })
+            )
+          ),
+          
+          // Step content
+          React.createElement('div', { className: 'bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6' },
+            currentStep === 'requirements' && React.createElement(RequirementsStep, { onNext: handleNextStep }),
+            currentStep === 'specification' && React.createElement(SpecificationStep, { onNext: handleNextStep }),
+            currentStep === 'development_plan' && React.createElement(DevelopmentPlanStep, { onNext: handleNextStep }),
+            currentStep === 'module_output' && React.createElement(ModuleOutputStep)
+          )
+        )
+      );
+    };
+    
+    // Step Components
+    const RequirementsStep = ({ onNext }) => {
+      return React.createElement('div', null,
+        React.createElement('h2', { className: 'text-2xl font-bold mb-6' }, 'Module Requirements'),
+        React.createElement('form', { 
+          onSubmit: (e) => {
+            e.preventDefault();
+            onNext();
+          }
+        },
+          React.createElement('div', { className: 'mb-4' },
+            React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Module Name *'),
+            React.createElement('input', { 
+              name: 'moduleName',
+              className: 'w-full px-3 py-2 border border-gray-300 rounded-md',
+              required: true
+            })
+          ),
+          React.createElement('div', { className: 'mb-4' },
+            React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Description *'),
+            React.createElement('textarea', { 
+              name: 'description',
+              className: 'w-full px-3 py-2 border border-gray-300 rounded-md',
+              rows: 3,
+              required: true
+            })
+          ),
+          React.createElement('div', { className: 'grid grid-cols-2 gap-4 mb-4' },
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Version *'),
+              React.createElement('input', { 
+                name: 'version',
+                className: 'w-full px-3 py-2 border border-gray-300 rounded-md',
+                defaultValue: '16.0.1.0.0',
+                required: true
+              })
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Category'),
+              React.createElement('input', { 
+                name: 'category',
+                className: 'w-full px-3 py-2 border border-gray-300 rounded-md'
+              })
+            )
+          ),
+          React.createElement('div', { className: 'grid grid-cols-2 gap-4 mb-4' },
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Author'),
+              React.createElement('input', { 
+                name: 'author',
+                className: 'w-full px-3 py-2 border border-gray-300 rounded-md'
+              })
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Website'),
+              React.createElement('input', { 
+                name: 'website',
+                className: 'w-full px-3 py-2 border border-gray-300 rounded-md',
+                type: 'url'
+              })
+            )
+          ),
+          React.createElement('div', { className: 'grid grid-cols-2 gap-4 mb-6' },
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'License *'),
+              React.createElement('select', { 
+                name: 'license',
+                className: 'w-full px-3 py-2 border border-gray-300 rounded-md',
+                defaultValue: 'LGPL-3',
+                required: true
+              },
+                React.createElement('option', { value: 'LGPL-3' }, 'LGPL-3'),
+                React.createElement('option', { value: 'GPL-3' }, 'GPL-3'),
+                React.createElement('option', { value: 'MIT' }, 'MIT'),
+                React.createElement('option', { value: 'OPL-1' }, 'OPL-1')
+              )
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Dependencies'),
+              React.createElement('input', { 
+                name: 'depends',
+                className: 'w-full px-3 py-2 border border-gray-300 rounded-md',
+                placeholder: 'base,sale,stock'
+              })
+            )
+          ),
+          React.createElement('div', { className: 'flex justify-end' },
+            React.createElement('button', { 
+              type: 'submit',
+              className: 'px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600'
+            }, 'Next Step')
+          )
+        )
+      );
+    };
+    
+    const SpecificationStep = ({ onNext }) => {
+      const [isGenerating, setIsGenerating] = React.useState(true);
+      const [specification, setSpecification] = React.useState('');
+      
+      // Simulate generation
+      React.useEffect(() => {
+        const timer = setTimeout(() => {
+          setIsGenerating(false);
+          setSpecification(`# Module Specification\n\n## Overview\nThis module will manage custom functionality for Odoo.\n\n## Module Information\n- Version: 16.0.1.0.0\n- Category: Uncategorized\n- License: LGPL-3\n\n## Functional Specifications\n1. Create module directory structure\n2. Implement basic models and views\n3. Add security access rules`);
+        }, 2000);
+        
+        return () => clearTimeout(timer);
+      }, []);
+      
+      if (isGenerating) {
+        return React.createElement('div', { className: 'flex flex-col items-center justify-center h-64' },
+          React.createElement('div', { className: 'animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4' }),
+          React.createElement('p', null, 'Generating specification based on your requirements...')
+        );
+      }
+      
+      return React.createElement('div', null,
+        React.createElement('h2', { className: 'text-2xl font-bold mb-4' }, 'Module Specification'),
+        React.createElement('p', { className: 'text-gray-600 mb-6' }, 'Review the generated specification for your module.'),
+        React.createElement('div', { className: 'bg-gray-50 border border-gray-200 rounded-lg p-5 mb-6' },
+          React.createElement('pre', { className: 'whitespace-pre-wrap font-mono text-sm' }, specification)
+        ),
+        React.createElement('div', { className: 'flex justify-between' },
+          React.createElement('div', null,
+            React.createElement('button', { 
+              className: 'px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 mr-3'
+            }, 'Edit Specification'),
+            React.createElement('button', { 
+              className: 'px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50'
+            }, 'Regenerate')
+          ),
+          React.createElement('button', { 
+            onClick: onNext,
+            className: 'px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600'
+          }, 'Approve & Continue')
+        )
+      );
+    };
+    
+    const DevelopmentPlanStep = ({ onNext }) => {
+      const [isGenerating, setIsGenerating] = React.useState(true);
+      
+      // Simulate generation
+      React.useEffect(() => {
+        const timer = setTimeout(() => {
+          setIsGenerating(false);
+        }, 2500);
+        
+        return () => clearTimeout(timer);
+      }, []);
+      
+      if (isGenerating) {
+        return React.createElement('div', { className: 'flex flex-col items-center justify-center h-64' },
+          React.createElement('div', { className: 'animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4' }),
+          React.createElement('p', null, 'Generating development plan based on your specification...')
+        );
+      }
+      
+      return React.createElement('div', null,
+        React.createElement('h2', { className: 'text-2xl font-bold mb-4' }, 'Development Plan'),
+        React.createElement('p', { className: 'text-gray-600 mb-6' }, 'Review the development plan for your module.'),
+        React.createElement('div', { className: 'bg-gray-50 border border-gray-200 rounded-lg p-5 mb-6' },
+          React.createElement('div', null,
+            React.createElement('div', { className: 'text-xl font-bold mb-4' }, 'Development Plan'),
+            React.createElement('div', { className: 'mb-4 border border-gray-200 rounded-lg overflow-hidden' },
+              React.createElement('div', { className: 'bg-gray-100 p-3 cursor-pointer flex justify-between items-center' },
+                React.createElement('h3', { className: 'font-medium' }, 'Phase 1: Setup & Configuration'),
+                React.createElement('svg', { className: 'w-5 h-5', fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor' },
+                  React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M19 9l-7 7-7-7' })
+                )
+              )
+            ),
+            React.createElement('div', { className: 'mb-4 border border-gray-200 rounded-lg overflow-hidden' },
+              React.createElement('div', { className: 'bg-gray-100 p-3 cursor-pointer flex justify-between items-center' },
+                React.createElement('h3', { className: 'font-medium' }, 'Phase 2: Business Logic'),
+                React.createElement('svg', { className: 'w-5 h-5', fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor' },
+                  React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M19 9l-7 7-7-7' })
+                )
+              )
+            )
+          )
+        ),
+        React.createElement('div', { className: 'flex justify-between' },
+          React.createElement('div', null,
+            React.createElement('button', { 
+              className: 'px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 mr-3'
+            }, 'Edit Plan'),
+            React.createElement('button', { 
+              className: 'px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50'
+            }, 'Regenerate')
+          ),
+          React.createElement('button', { 
+            onClick: onNext,
+            className: 'px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600'
+          }, 'Approve & Continue')
+        )
+      );
+    };
+    
+    const ModuleOutputStep = () => {
+      const [isGenerating, setIsGenerating] = React.useState(true);
+      const [generationProgress, setGenerationProgress] = React.useState(0);
+      const [isGenerated, setIsGenerated] = React.useState(false);
+      
+      // Simulate progressive generation
+      React.useEffect(() => {
+        let progress = 0;
+        const interval = setInterval(() => {
+          progress += 10;
+          setGenerationProgress(progress);
+          
+          if (progress >= 100) {
+            clearInterval(interval);
+            setIsGenerating(false);
+            setIsGenerated(true);
+          }
+        }, 500);
+        
+        return () => clearInterval(interval);
+      }, []);
+      
+      if (isGenerating) {
+        return React.createElement('div', { className: 'flex flex-col items-center justify-center h-64' },
+          React.createElement('h3', { className: 'text-xl font-bold mb-4' }, 'Generating Your Module'),
+          React.createElement('div', { className: 'w-full max-w-md bg-gray-200 rounded-full h-4 mb-4' },
+            React.createElement('div', { 
+              className: 'bg-blue-500 h-4 rounded-full transition-all duration-300 ease-in-out',
+              style: { width: `${generationProgress}%` }
+            })
+          ),
+          React.createElement('div', { className: 'flex flex-col items-center text-center' },
+            React.createElement('p', { className: 'text-gray-600 mb-2' },
+              generationProgress < 30 ? "Analyzing requirements and specifications..." :
+              generationProgress < 60 ? "Creating module structure and files..." :
+              generationProgress < 90 ? "Implementing models and views..." :
+              "Finalizing module generation..."
+            ),
+            React.createElement('p', { className: 'text-gray-500 text-sm' },
+              `${generationProgress}% complete`
+            )
+          )
+        );
+      }
+      
+      return React.createElement('div', null,
+        React.createElement('h2', { className: 'text-2xl font-bold mb-4' }, 'Generated Module'),
+        React.createElement('p', { className: 'text-gray-600 mb-6' }, 'Your Odoo module has been generated successfully.'),
+        React.createElement('div', { className: 'flex flex-col md:flex-row gap-6' },
+          React.createElement('div', { className: 'w-full md:w-1/3 bg-gray-100 rounded-lg p-4 h-96 overflow-auto' },
+            React.createElement('h3', { className: 'text-lg font-semibold mb-3' }, 'Module Files'),
+            React.createElement('div', { className: 'space-y-1' },
+              ['__manifest__.py', '__init__.py', 'models/__init__.py', 'models/models.py', 'views/views.xml', 'security/ir.model.access.csv'].map(file => 
+                React.createElement('div', { 
+                  key: file,
+                  className: 'p-2 rounded cursor-pointer hover:bg-gray-200 flex items-center'
+                },
+                  React.createElement('svg', { className: 'w-5 h-5 mr-2 text-gray-500', fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor' },
+                    React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' })
+                  ),
+                  React.createElement('span', { className: 'text-sm truncate' }, file)
+                )
+              )
+            )
+          ),
+          React.createElement('div', { className: 'w-full md:w-2/3' },
+            React.createElement('div', null,
+              React.createElement('div', { className: 'bg-gray-200 px-4 py-2 rounded-t-lg flex justify-between items-center' },
+                React.createElement('span', { className: 'font-mono text-sm' }, '__manifest__.py'),
+                React.createElement('span', { className: 'text-xs px-2 py-1 bg-gray-300 rounded' }, 'python')
+              ),
+              React.createElement('pre', { className: 'bg-white border border-gray-300 rounded-b-lg p-4 h-80 overflow-auto text-sm font-mono' },
+                `# -*- coding: utf-8 -*-
+{
+    'name': "Custom Module",
+    'version': "16.0.1.0.0",
+    'category': "Uncategorized",
+    'summary': "A custom module for Odoo",
+    'description': """
+A custom module for Odoo.
+    """,
+    'author': "Odoo Module Builder",
+    'website': "",
+    'depends': ['base'],
+    'data': [
+        'security/ir.model.access.csv',
+        'views/views.xml',
+        'data/demo.xml',
+    ],
+    'demo': [],
+    'installable': True,
+    'application': True,
+    'auto_install': False,
+    'license': "LGPL-3",
+}`
+              )
+            )
+          )
+        ),
+        React.createElement('div', { className: 'mt-8 flex justify-between' },
+          React.createElement('div', null,
+            React.createElement('p', { className: 'text-sm text-gray-500' }, 'Module has been created and is ready to download.')
+          ),
+          React.createElement('button', { 
+            className: 'px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center'
+          },
+            React.createElement('svg', { className: 'w-5 h-5 mr-2', fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor' },
+              React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4' })
+            ),
+            'Download Module'
+          )
+        )
+      );
+    };
+    
+    // Initial render
+    document.addEventListener('DOMContentLoaded', () => {
+      ReactDOM.render(
+        React.createElement(App),
+        document.getElementById('root')
+      );
+      
+      // Load test scenario
+      const script = document.createElement('script');
+      script.src = '/test-scenario.js';
+      document.body.appendChild(script);
+    });
+  </script>
+</body>
+</html>

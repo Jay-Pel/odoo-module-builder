@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useOnboardingStore from '../../stores/onboardingStore';
@@ -15,11 +15,15 @@ const InputContainer = styled(motion.div)`
   width: 100%;
   height: 60px;
   border-radius: 100px;
-  background: ${({ theme, isFocused }) => 
-    isFocused ? theme.colors.background.active : theme.colors.background.secondary};
+  background: ${({ theme, isFocused, isInvalid }) => 
+    isInvalid ? theme.colors.error + '10' :
+    isFocused ? theme.colors.background.active : 
+    theme.colors.background.secondary};
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   transition: all 0.3s ease;
+  border: 2px solid ${({ theme, isInvalid }) => 
+    isInvalid ? theme.colors.error : 'transparent'};
   
   &:hover {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
@@ -51,7 +55,8 @@ const FloatingOrb = styled(motion.div)`
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: ${({ theme }) => theme.colors.primary.main};
+  background: ${({ theme, isInvalid }) => 
+    isInvalid ? theme.colors.error : theme.colors.primary.main};
   filter: blur(1px);
   z-index: -1;
 `;
@@ -59,23 +64,25 @@ const FloatingOrb = styled(motion.div)`
 const InputOrb = ({ 
   placeholder = "Type your answer...", 
   onSubmit,
-  type = "text"
+  type = "text",
+  value: controlledValue,
+  onChange: onControlledChange,
+  'aria-label': ariaLabel,
+  'aria-invalid': ariaInvalid
 }) => {
-  const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef(null);
-  const { setCurrentQuestionResponse } = useOnboardingStore();
   
   const handleChange = (e) => {
-    setValue(e.target.value);
+    if (onControlledChange) {
+      onControlledChange(e.target.value);
+    }
   };
   
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (value.trim()) {
-      setCurrentQuestionResponse(value);
-      if (onSubmit) onSubmit(value);
-      setValue('');
+    if (controlledValue?.trim() && onSubmit) {
+      onSubmit(controlledValue);
     }
   };
   
@@ -133,18 +140,20 @@ const InputOrb = ({
         variants={containerVariants}
         animate={isFocused ? "focused" : "idle"}
         isFocused={isFocused}
+        isInvalid={ariaInvalid}
       >
         <form onSubmit={handleSubmit}>
           <StyledInput
             ref={inputRef}
             type={type}
-            value={value}
+            value={controlledValue || ''}
             onChange={handleChange}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            aria-label={placeholder}
+            aria-label={ariaLabel || placeholder}
+            aria-invalid={ariaInvalid}
           />
         </form>
         
@@ -153,16 +162,19 @@ const InputOrb = ({
           variants={orbVariants}
           animate={isFocused ? "focused" : "idle"}
           style={{ top: '15%', left: '10%' }}
+          isInvalid={ariaInvalid}
         />
         <FloatingOrb
           variants={orbVariants}
           animate={isFocused ? "focused" : "idle"}
           style={{ top: '60%', left: '85%' }}
+          isInvalid={ariaInvalid}
         />
         <FloatingOrb
           variants={orbVariants}
           animate={isFocused ? "focused" : "idle"}
           style={{ top: '70%', left: '20%' }}
+          isInvalid={ariaInvalid}
         />
       </InputContainer>
     </OrbContainer>
