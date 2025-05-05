@@ -6,42 +6,63 @@ import shutil
 import subprocess
 from datetime import datetime
 from services.llm_service import LLMService
+from services.n8n_service import N8nService
+from services.docker_service import DockerService
+from services.config_service import ConfigService
 
 class TestingService:
     """
     Service for testing generated Odoo modules
     """
     
-    def __init__(self):
+    def __init__(self, n8n_service=None, docker_service=None, config_service=None):
         """
         Initialize the testing service
+        
+        Args:
+            n8n_service (N8nService, optional): N8n service for integration
+            docker_service (DockerService, optional): Docker service for testing containers
+            config_service (ConfigService, optional): Configuration service
         """
         self.llm_service = LLMService()
+        self.n8n_service = n8n_service
+        self.docker_service = docker_service
+        self.config_service = config_service
         
         # Create data directories if they don't exist
         self.data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
         self.screenshots_dir = os.path.join(self.data_dir, 'screenshots')
         self.test_results_dir = os.path.join(self.data_dir, 'test_results')
         self.fixes_dir = os.path.join(self.data_dir, 'fixes')
+        self.user_tests_dir = os.path.join(self.data_dir, 'user_tests')
         
         os.makedirs(self.screenshots_dir, exist_ok=True)
         os.makedirs(self.test_results_dir, exist_ok=True)
         os.makedirs(self.fixes_dir, exist_ok=True)
+        os.makedirs(self.user_tests_dir, exist_ok=True)
         
         # In-memory storage for test results (in a real implementation, this would be a database)
         self.test_results = {}
         self.fixes = {}
+        self.user_tests = {}
+        
+        # Cache for user testing sessions
+        self.testing_sessions = {}
+        
+        # Initialize with empty data for now
+        # We'll implement proper loading later
     
-    def run_tests(self, module_path, generation_id):
+    def run_tests(self, module_path, generation_id, metadata=None):
         """
-        Run tests on a generated module
+        Run tests on a generated module with Claude 3.7 Sonnet for automated fixes
         
         Args:
             module_path (str): Path to the module directory
             generation_id (str): Generation ID
+            metadata (dict, optional): Additional metadata including Odoo version and edition
             
         Returns:
-            dict: Test results
+            dict: Test results with explanation of changes if any
         """
         # Create a test results object
         test_results = {
@@ -51,9 +72,182 @@ class TestingService:
             'backend_tests': [],
             'frontend_tests': [],
             'errors': [],
-            'fixes_applied': []
+            'fixes_applied': [],
+            'explanation': ''
         }
         
+        if metadata is None:
+            metadata = {}
+            
+        # Add Odoo version and edition information if not provided
+        if 'odooVersion' not in metadata:
+            metadata['odooVersion'] = '16.0'
+        if 'odooEdition' not in metadata:
+            metadata['odooEdition'] = 'community'
+        
+        try:
+            # Try to use n8n workflow for automated testing
+            try:
+                # Call the n8n testing workflow with Claude 3.7 Sonnet for fixes
+                workflow_results = self.n8n_service.run_tests(module_path, generation_id, metadata)
+                
+                if workflow_results and workflow_results.get('status') != 'error' and not workflow_results.get('fallback_required', False):
+                    # Use test results from the n8n workflow
+                    if 'backend_tests' in workflow_results:
+                        test_results['backend_tests'] = workflow_results['backend_tests']
+                    if 'frontend_tests' in workflow_results:
+                        test_results['frontend_tests'] = workflow_results['frontend_tests']
+                    if 'errors' in workflow_results:
+                        test_results['errors'] = workflow_results['errors']
+                    if 'fixes_applied' in workflow_results:
+                        test_results['fixes_applied'] = workflow_results['fixes_applied']
+                    if 'status' in workflow_results:
+                        test_results['status'] = workflow_results['status']
+                    if 'explanation' in workflow_results:
+                        test_results['explanation'] = workflow_results['explanation']
+                        
+                    # Check if there are before/after test results
+                    if 'backend_tests_after_fix' in workflow_results:
+                        test_results['backend_tests_after_fix'] = workflow_results['backend_tests_after_fix']
+                    if 'frontend_tests_after_fix' in workflow_results:
+                        test_results['frontend_tests_after_fix'] = workflow_results['frontend_tests_after_fix']
+                else:
+                    # Fallback to direct testing methods
+                    self._fallback_run_tests(module_path, test_results, metadata)
+            except Exception as e:
+                print(f"Error calling n8n testing workflow: {str(e)}")
+                # Fallback to direct testing methods
+                self._fallback_run_tests(module_path, test_results, metadata)
+        except Exception as e:
+            print(f"Error running tests: {str(e)}")
+            test_results['status'] = 'error'
+            test_results['errors'].append({
+                'type': 'system',
+                'error': str(e)
+            })
+        
+        # Save test results
+        self.test_results[generation_id] = test_results
+        self._save_test_results(generation_id)
+        
+        return test_results
+        
+    def get_testing_iframe(self, module_name, generation_id, metadata=None):
+        """
+        Get an iframe URL for user testing
+        
+        Args:
+            module_name (str): Name of the module being tested
+            generation_id (str): Generation ID
+            metadata (dict): Additional metadata
+            
+        Returns:
+            dict: Response containing iframe URL
+        """
+        # Initialize result
+        result = {
+            'generation_id': generation_id,
+            'timestamp': datetime.now().isoformat(),
+            'status': 'pending',
+            'iframe_url': None,
+            'errors': []
+        }
+        
+        try:
+            # Get a running Odoo container URL from the Docker service
+            if not self.docker_service:
+                self.docker_service = DockerService(self.n8n_service)
+            
+            # Check if there's metadata passed, otherwise create it
+            if metadata is None:
+                metadata = {}
+                
+                # If there's a config service, get default values from it
+                if self.config_service:
+                    odoo_defaults = self.config_service.get_odoo_defaults()
+                    metadata['odooVersion'] = odoo_defaults.get('version', '16.0')
+                    metadata['odooEdition'] = odoo_defaults.get('edition', 'community')
+                else:
+                    # Use defaults if no config service
+                    metadata['odooVersion'] = '16.0'
+                    metadata['odooEdition'] = 'community'
+            
+            # Start an Odoo container or get the URL of an existing one
+            container_url = self.docker_service.get_odoo_container_url(metadata.get('odooVersion', '16.0'), metadata.get('odooEdition', 'community'))
+            
+            if not container_url:
+                result['status'] = 'error'
+                result['errors'].append({
+                    'type': 'system',
+                    'error': 'Failed to start Odoo container'
+                })
+                return result
+            
+            # Use n8n workflow to create iframe URL
+            if self.n8n_service:
+                iframe_response = self.n8n_service.get_user_testing_iframe(
+                    container_url=container_url,
+                    module_name=module_name,
+                    generation_id=generation_id,
+                    metadata=metadata
+                )
+                
+                if iframe_response and iframe_response.get('status') == 'success' and 'iframeUrl' in iframe_response:
+                    result['status'] = 'success'
+                    result['iframe_url'] = iframe_response['iframeUrl']
+                    
+                    # Store the iframe session information
+                    self.testing_sessions[generation_id] = {
+                        'container_url': container_url,
+                        'module_name': module_name,
+                        'iframe_url': iframe_response['iframeUrl'],
+                        'session_id': iframe_response.get('testSessionId', str(uuid.uuid4())),
+                        'created_at': datetime.now().isoformat(),
+                        'metadata': metadata
+                    }
+                else:
+                    result['status'] = 'error'
+                    result['errors'].append({
+                        'type': 'system',
+                        'error': iframe_response.get('message', 'Failed to generate testing iframe')
+                    })
+            else:
+                # Fallback if n8n service is not available
+                result['status'] = 'success'
+                result['iframe_url'] = container_url
+                
+                # Store the basic information
+                self.testing_sessions[generation_id] = {
+                    'container_url': container_url,
+                    'module_name': module_name,
+                    'iframe_url': container_url,
+                    'session_id': str(uuid.uuid4()),
+                    'created_at': datetime.now().isoformat(),
+                    'metadata': metadata
+                }
+        except Exception as e:
+            print(f"Error getting testing iframe: {str(e)}")
+            result['status'] = 'error'
+            result['errors'].append({
+                'type': 'system',
+                'error': str(e)
+            })
+        
+        # Save the test session info
+        self.user_tests[generation_id] = result
+        self._save_user_test_results(generation_id)
+        
+        return result
+        
+    def _fallback_run_tests(self, module_path, test_results, metadata=None):
+        """
+        Fallback method to run tests directly if n8n workflow fails
+        
+        Args:
+            module_path (str): Path to the module directory
+            test_results (dict): Test results object to update
+            metadata (dict, optional): Additional metadata including Odoo version and edition
+        """
         # Run backend tests
         backend_results = self._run_backend_tests(module_path)
         test_results['backend_tests'] = backend_results
@@ -113,578 +307,69 @@ class TestingService:
                     if not test.get('passed', False):
                         all_pass = False
                         break
-                
+                        
                 if all_pass:
                     test_results['status'] = 'fixed_and_passed'
-        
-        # Save test results
-        self.test_results[generation_id] = test_results
-        self._save_test_results(generation_id)
-        
-        return test_results
-    
-    def get_test_results(self, generation_id):
+                    
+    def get_user_testing_session(self, generation_id):
         """
-        Get the test results for a generated module
-        
+        Get the user testing session information
+            
         Args:
             generation_id (str): Generation ID
-            
-        Returns:
-            dict: Test results
-        """
-        if generation_id not in self.test_results:
-            # Try to load from file
-            if not self._load_test_results(generation_id):
-                return None
-        
-        return self.test_results[generation_id]
-    
-    def get_screenshot_path(self, screenshot_id):
-        """
-        Get the path to a screenshot
-        
-        Args:
-            screenshot_id (str): Screenshot ID
-            
-        Returns:
-            str: Path to the screenshot
-        """
-        return os.path.join(self.screenshots_dir, f"{screenshot_id}.png")
-    
-    def get_fixes(self, generation_id):
-        """
-        Get the fixes applied to a generated module
-        
-        Args:
-            generation_id (str): Generation ID
-            
-        Returns:
-            list: Applied fixes
-        """
-        if generation_id not in self.fixes:
-            # Try to load from file
-            if not self._load_fixes(generation_id):
-                return []
-        
-        return self.fixes[generation_id]
-    
-    def _run_backend_tests(self, module_path):
-        """
-        Run backend tests on a generated module
-        
-        Args:
-            module_path (str): Path to the module directory
-            
-        Returns:
-            list: Test results
-        """
-        # In a real implementation, this would run actual tests using Odoo's test framework
-        # For now, we'll simulate test results
-        
-        results = []
-        
-        # Check Python syntax
-        python_files = self._find_files(module_path, '.py')
-        for file_path in python_files:
-            result = self._check_python_syntax(file_path)
-            if result:
-                results.append(result)
-        
-        # Check model definitions
-        model_files = [f for f in python_files if '/models/' in f]
-        for file_path in model_files:
-            result = self._check_model_definition(file_path)
-            if result:
-                results.append(result)
-        
-        # Check security files
-        security_files = self._find_files(os.path.join(module_path, 'security'), '.csv')
-        for file_path in security_files:
-            result = self._check_security_file(file_path)
-            if result:
-                results.append(result)
-        
-        return results
-    
-    def _run_frontend_tests(self, module_path):
-        """
-        Run frontend tests on a generated module
-        
-        Args:
-            module_path (str): Path to the module directory
-            
-        Returns:
-            list: Test results
-        """
-        # In a real implementation, this would run actual tests using a frontend testing framework
-        # For now, we'll simulate test results
-        
-        results = []
-        
-        # Check XML syntax
-        xml_files = self._find_files(module_path, '.xml')
-        for file_path in xml_files:
-            result = self._check_xml_syntax(file_path)
-            if result:
-                results.append(result)
-        
-        # Check JavaScript syntax
-        js_files = self._find_files(module_path, '.js')
-        for file_path in js_files:
-            result = self._check_js_syntax(file_path)
-            if result:
-                results.append(result)
-        
-        return results
-    
-    def _check_python_syntax(self, file_path):
-        """
-        Check Python syntax
-        
-        Args:
-            file_path (str): Path to the Python file
-            
-        Returns:
-            dict: Test result
-        """
-        try:
-            with open(file_path, 'r') as f:
-                content = f.read()
-            
-            # Try to compile the Python code to check for syntax errors
-            compile(content, file_path, 'exec')
-            
-            return {
-                'name': f"Python Syntax Check: {os.path.basename(file_path)}",
-                'description': "Checks for Python syntax errors",
-                'passed': True,
-                'file_path': file_path
-            }
-        except SyntaxError as e:
-            return {
-                'name': f"Python Syntax Check: {os.path.basename(file_path)}",
-                'description': "Checks for Python syntax errors",
-                'passed': False,
-                'error': f"Syntax error at line {e.lineno}: {e.msg}",
-                'file_path': file_path,
-                'line': e.lineno
-            }
-        except Exception as e:
-            return {
-                'name': f"Python Syntax Check: {os.path.basename(file_path)}",
-                'description': "Checks for Python syntax errors",
-                'passed': False,
-                'error': str(e),
-                'file_path': file_path
-            }
-    
-    def _check_model_definition(self, file_path):
-        """
-        Check model definition
-        
-        Args:
-            file_path (str): Path to the model file
-            
-        Returns:
-            dict: Test result
-        """
-        try:
-            with open(file_path, 'r') as f:
-                content = f.read()
-            
-            # Check for common model definition issues
-            issues = []
-            
-            # Check if _name is defined for models
-            if 'models.Model' in content and '_name' not in content:
-                issues.append("Model class is missing _name attribute")
-            
-            # Check if _description is defined for models
-            if 'models.Model' in content and '_description' not in content:
-                issues.append("Model class is missing _description attribute")
-            
-            # Check for potential field definition issues
-            if 'fields.' in content:
-                # Check for common field definition mistakes
-                if re.search(r'fields\.[A-Za-z]+\s*\(\s*\)', content):
-                    issues.append("Field definition is missing required parameters")
                 
-                # Check for string parameter in field definitions
-                if re.search(r'fields\.[A-Za-z]+\s*\([^)]*\)', content) and 'string=' not in content:
-                    issues.append("Field definitions should include a 'string' parameter for better UI labels")
-            
-            if issues:
-                return {
-                    'name': f"Model Definition Check: {os.path.basename(file_path)}",
-                    'description': "Checks for proper model definitions",
-                    'passed': False,
-                    'error': "\n".join(issues),
-                    'file_path': file_path
-                }
-            else:
-                return {
-                    'name': f"Model Definition Check: {os.path.basename(file_path)}",
-                    'description': "Checks for proper model definitions",
-                    'passed': True,
-                    'file_path': file_path
-                }
-        except Exception as e:
-            return {
-                'name': f"Model Definition Check: {os.path.basename(file_path)}",
-                'description': "Checks for proper model definitions",
-                'passed': False,
-                'error': str(e),
-                'file_path': file_path
-            }
-    
-    def _check_security_file(self, file_path):
-        """
-        Check security file
-        
-        Args:
-            file_path (str): Path to the security file
-            
         Returns:
-            dict: Test result
+            dict: User testing session information
         """
-        try:
-            with open(file_path, 'r') as f:
-                content = f.read()
+        if generation_id not in self.testing_sessions:
+            return None
             
-            # Check for common security file issues
-            issues = []
-            
-            # Check if the file has the correct header
-            if not content.startswith('id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink'):
-                issues.append("Security file is missing the correct header")
-            
-            # Check if permissions are defined as 0 or 1
-            if re.search(r',[^01],[^01],[^01],[^01]$', content, re.MULTILINE):
-                issues.append("Permissions must be defined as 0 or 1")
-            
-            if issues:
-                return {
-                    'name': f"Security File Check: {os.path.basename(file_path)}",
-                    'description': "Checks for proper security file configuration",
-                    'passed': False,
-                    'error': "\n".join(issues),
-                    'file_path': file_path
-                }
-            else:
-                return {
-                    'name': f"Security File Check: {os.path.basename(file_path)}",
-                    'description': "Checks for proper security file configuration",
-                    'passed': True,
-                    'file_path': file_path
-                }
-        except Exception as e:
-            return {
-                'name': f"Security File Check: {os.path.basename(file_path)}",
-                'description': "Checks for proper security file configuration",
-                'passed': False,
-                'error': str(e),
-                'file_path': file_path
-            }
+        return self.testing_sessions[generation_id]
     
-    def _check_xml_syntax(self, file_path):
+    def get_user_testing_results(self, generation_id):
         """
-        Check XML syntax
-        
+        Get the user testing results
+            
         Args:
-            file_path (str): Path to the XML file
-            
-        Returns:
-            dict: Test result
-        """
-        try:
-            import xml.etree.ElementTree as ET
-            
-            with open(file_path, 'r') as f:
-                content = f.read()
-            
-            # Try to parse the XML to check for syntax errors
-            ET.fromstring(content)
-            
-            return {
-                'name': f"XML Syntax Check: {os.path.basename(file_path)}",
-                'description': "Checks for XML syntax errors",
-                'passed': True,
-                'file_path': file_path
-            }
-        except ET.ParseError as e:
-            return {
-                'name': f"XML Syntax Check: {os.path.basename(file_path)}",
-                'description': "Checks for XML syntax errors",
-                'passed': False,
-                'error': f"XML parse error: {str(e)}",
-                'file_path': file_path
-            }
-        except Exception as e:
-            return {
-                'name': f"XML Syntax Check: {os.path.basename(file_path)}",
-                'description': "Checks for XML syntax errors",
-                'passed': False,
-                'error': str(e),
-                'file_path': file_path
-            }
-    
-    def _check_js_syntax(self, file_path):
-        """
-        Check JavaScript syntax
-        
-        Args:
-            file_path (str): Path to the JavaScript file
-            
-        Returns:
-            dict: Test result
-        """
-        try:
-            with open(file_path, 'r') as f:
-                content = f.read()
-            
-            # Check for common JavaScript issues
-            issues = []
-            
-            # Check for missing semicolons
-            if re.search(r'[^;{}\s]\s*\n', content):
-                issues.append("Missing semicolons at the end of statements")
-            
-            # Check for console.log statements (which should be removed in production)
-            if 'console.log' in content:
-                issues.append("console.log statements should be removed in production code")
-            
-            if issues:
-                return {
-                    'name': f"JavaScript Check: {os.path.basename(file_path)}",
-                    'description': "Checks for JavaScript issues",
-                    'passed': False,
-                    'error': "\n".join(issues),
-                    'file_path': file_path
-                }
-            else:
-                return {
-                    'name': f"JavaScript Check: {os.path.basename(file_path)}",
-                    'description': "Checks for JavaScript issues",
-                    'passed': True,
-                    'file_path': file_path
-                }
-        except Exception as e:
-            return {
-                'name': f"JavaScript Check: {os.path.basename(file_path)}",
-                'description': "Checks for JavaScript issues",
-                'passed': False,
-                'error': str(e),
-                'file_path': file_path
-            }
-    
-    def _fix_errors(self, module_path, errors):
-        """
-        Fix errors in a generated module
-        
-        Args:
-            module_path (str): Path to the module directory
-            errors (list): List of errors
-            
-        Returns:
-            list: Applied fixes
-        """
-        fixes = []
-        
-        for error in errors:
-            fix = self._generate_fix(error)
-            
-            if fix and 'file_path' in error and 'fix_content' in fix:
-                # Apply the fix
-                self._apply_fix(error['file_path'], fix['fix_content'])
+            generation_id (str): Generation ID
                 
-                # Add to the list of applied fixes
-                fixes.append({
-                    'error': error,
-                    'fix': fix
-                })
-        
-        return fixes
-    
-    def _generate_fix(self, error):
-        """
-        Generate a fix for an error
-        
-        Args:
-            error (dict): Error information
-            
         Returns:
-            dict: Fix information
+            dict: User testing results
         """
-        if 'file_path' not in error or not os.path.exists(error['file_path']):
+        if generation_id not in self.user_tests:
             return None
-        
-        try:
-            with open(error['file_path'], 'r') as f:
-                file_content = f.read()
             
-            # Prepare a prompt for the LLM to generate a fix
-            prompt = f"""
-            I need to fix an error in an Odoo module file. Here's the information:
-            
-            File: {os.path.basename(error['file_path'])}
-            Error: {error['error']}
-            
-            Here's the current content of the file:
-            
-            ```
-            {file_content}
-            ```
-            
-            Please provide the corrected version of the file that fixes the error.
-            Only provide the full corrected file content, nothing else.
-            """
-            
-            # Call the LLM to generate a fix
-            if self.llm_service.default_provider == 'openai':
-                fix_content = self._generate_fix_with_openai(prompt)
-            elif self.llm_service.default_provider == 'anthropic':
-                fix_content = self._generate_fix_with_anthropic(prompt)
-            else:
-                return None
-            
-            # If the fix is the same as the original content, it didn't actually fix anything
-            if fix_content.strip() == file_content.strip():
-                return None
-            
-            return {
-                'description': f"Fixed error in {os.path.basename(error['file_path'])}",
-                'fix_content': fix_content
-            }
-            
-        except Exception as e:
-            print(f"Error generating fix: {str(e)}")
-            return None
-    
-    def _generate_fix_with_openai(self, prompt):
+        return self.user_tests[generation_id]
+
+    def _save_user_test_results(self, generation_id):
         """
-        Generate a fix using OpenAI
-        
-        Args:
-            prompt (str): Prompt for the LLM
+        Save user test results to disk
             
-        Returns:
-            str: Generated fix
-        """
-        import openai
-        
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are an expert Odoo developer. Your task is to fix errors in Odoo module files."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,
-            max_tokens=2000
-        )
-        
-        return response.choices[0].message.content.strip()
-    
-    def _generate_fix_with_anthropic(self, prompt):
-        """
-        Generate a fix using Anthropic
-        
-        Args:
-            prompt (str): Prompt for the LLM
-            
-        Returns:
-            str: Generated fix
-        """
-        response = self.llm_service.anthropic_client.completions.create(
-            model="claude-2",
-            prompt=f"\n\nHuman: {prompt}\n\nAssistant:",
-            max_tokens_to_sample=2000,
-            temperature=0.3
-        )
-        
-        return response.completion.strip()
-    
-    def _apply_fix(self, file_path, fix_content):
-        """
-        Apply a fix to a file
-        
-        Args:
-            file_path (str): Path to the file
-            fix_content (str): Fixed content
-        """
-        # Create a backup of the original file
-        backup_path = f"{file_path}.bak"
-        shutil.copy2(file_path, backup_path)
-        
-        # Write the fixed content to the file
-        with open(file_path, 'w') as f:
-            f.write(fix_content)
-    
-    def _find_files(self, directory, extension):
-        """
-        Find files with a specific extension in a directory
-        
-        Args:
-            directory (str): Directory to search
-            extension (str): File extension to find
-            
-        Returns:
-            list: List of file paths
-        """
-        files = []
-        
-        for root, _, filenames in os.walk(directory):
-            for filename in filenames:
-                if filename.endswith(extension):
-                    files.append(os.path.join(root, filename))
-        
-        return files
-    
-    def _save_test_results(self, generation_id):
-        """
-        Save test results to a file
-        
         Args:
             generation_id (str): Generation ID
         """
-        file_path = os.path.join(self.test_results_dir, f"{generation_id}.json")
-        
-        with open(file_path, 'w') as f:
-            json.dump(self.test_results[generation_id], f, indent=2)
-    
-    def _load_test_results(self, generation_id):
-        """
-        Load test results from a file
-        
-        Args:
-            generation_id (str): Generation ID
-            
-        Returns:
-            bool: True if loaded successfully, False otherwise
-        """
-        file_path = os.path.join(self.test_results_dir, f"{generation_id}.json")
-        
-        if not os.path.exists(file_path):
-            return False
-        
-        try:
-            with open(file_path, 'r') as f:
-                self.test_results[generation_id] = json.load(f)
-            return True
-        except Exception:
-            return False
+        if generation_id in self.user_tests:
+            file_path = os.path.join(self.user_tests_dir, f"{generation_id}.json")
+            try:
+                with open(file_path, 'w') as f:
+                    json.dump(self.user_tests[generation_id], f, indent=2)
+            except Exception as e:
+                print(f"Error saving user test results for {generation_id}: {str(e)}")
     
     def _save_fixes(self, generation_id):
         """
-        Save fixes to a file
+        Save fixes to disk
         
         Args:
             generation_id (str): Generation ID
         """
-        file_path = os.path.join(self.fixes_dir, f"{generation_id}.json")
-        
-        with open(file_path, 'w') as f:
-            json.dump(self.fixes[generation_id], f, indent=2)
+        if generation_id in self.fixes:
+            file_path = os.path.join(self.fixes_dir, f"{generation_id}.json")
+            try:
+                with open(file_path, 'w') as f:
+                    json.dump(self.fixes[generation_id], f, indent=2)
+            except Exception as e:
+                print(f"Error saving fixes for {generation_id}: {str(e)}")
     
     def _load_fixes(self, generation_id):
         """
@@ -707,3 +392,183 @@ class TestingService:
             return True
         except Exception:
             return False
+    
+    def submit_user_feedback(self, generation_id, feedback, screenshots=None, metadata=None):
+        """
+        Submit user feedback from manual testing
+        
+        Args:
+            generation_id (str): Generation ID
+            feedback (str): User feedback text
+            screenshots (list): List of screenshots as base64 encoded strings
+            metadata (dict): Additional metadata
+            
+        Returns:
+            dict: Status of the feedback submission
+        """
+        result = {
+            'generation_id': generation_id,
+            'timestamp': datetime.now().isoformat(),
+            'status': 'pending',
+            'feedback': feedback,
+            'feedback_saved': False,
+            'errors': []
+        }
+        
+        try:
+            # Get the testing session information
+            session_info = self.testing_sessions.get(generation_id, {})
+            
+            if not session_info:
+                result['status'] = 'error'
+                result['errors'].append({
+                    'type': 'system',
+                    'error': 'No active testing session found for this generation ID'
+                })
+                return result
+            
+            # If n8n service is available, use it to submit feedback
+            if self.n8n_service:
+                # Combine metadata from the session with any additional metadata
+                combined_metadata = {}
+                combined_metadata.update(session_info.get('metadata', {}))
+                if metadata:
+                    combined_metadata.update(metadata)
+                
+                # Submit feedback through n8n workflow
+                feedback_response = self.n8n_service.submit_user_feedback(
+                    generation_id=generation_id,
+                    feedback=feedback,
+                    screenshots=screenshots,
+                    metadata=combined_metadata
+                )
+                
+                if feedback_response and feedback_response.get('status') == 'success':
+                    result['status'] = 'success'
+                    result['feedback_saved'] = True
+                else:
+                    result['status'] = 'error'
+                    result['errors'].append({
+                        'type': 'system',
+                        'error': feedback_response.get('message', 'Failed to submit feedback')
+                    })
+            else:
+                # Fallback if n8n service is not available
+                # Just save the feedback locally
+                user_test_data = self.user_tests.get(generation_id, {})
+                if not user_test_data:
+                    user_test_data = {
+                        'generation_id': generation_id,
+                        'timestamp': datetime.now().isoformat(),
+                        'status': 'success',
+                        'iframe_url': session_info.get('iframe_url', ''),
+                        'feedback': [],
+                        'errors': []
+                    }
+                
+                # Add the feedback
+                new_feedback = {
+                    'timestamp': datetime.now().isoformat(),
+                    'text': feedback,
+                    'screenshots': [] if screenshots is None else screenshots
+                }
+                
+                if 'feedback' not in user_test_data:
+                    user_test_data['feedback'] = []
+                
+                user_test_data['feedback'].append(new_feedback)
+                self.user_tests[generation_id] = user_test_data
+                
+                # Save to disk
+                self._save_user_test_results(generation_id)
+                
+                result['status'] = 'success'
+                result['feedback_saved'] = True
+        except Exception as e:
+            print(f"Error submitting user feedback: {str(e)}")
+            result['status'] = 'error'
+            result['errors'].append({
+                'type': 'system',
+                'error': str(e)
+            })
+        
+        return result
+    
+    def refresh_testing_iframe(self, generation_id, metadata=None):
+        """
+        Refresh the user testing iframe after module updates
+        
+        Args:
+            generation_id (str): Generation ID
+            metadata (dict): Additional metadata
+            
+        Returns:
+            dict: Status of the refresh operation
+        """
+        result = {
+            'generation_id': generation_id,
+            'timestamp': datetime.now().isoformat(),
+            'status': 'pending',
+            'iframe_url': None,
+            'errors': []
+        }
+        
+        try:
+            # Get the testing session information
+            session_info = self.testing_sessions.get(generation_id, {})
+            
+            if not session_info:
+                result['status'] = 'error'
+                result['errors'].append({
+                    'type': 'system',
+                    'error': 'No active testing session found for this generation ID'
+                })
+                return result
+            
+            # If n8n service is available, use it to refresh the iframe
+            if self.n8n_service:
+                # Combine metadata from the session with any additional metadata
+                combined_metadata = {}
+                combined_metadata.update(session_info.get('metadata', {}))
+                if metadata:
+                    combined_metadata.update(metadata)
+                
+                # Call the refresh workflow
+                refresh_response = self.n8n_service.refresh_testing_iframe(
+                    generation_id=generation_id,
+                    container_url=session_info.get('container_url', ''),
+                    module_name=session_info.get('module_name', ''),
+                    metadata=combined_metadata
+                )
+                
+                if refresh_response and refresh_response.get('status') == 'success':
+                    result['status'] = 'success'
+                    if 'iframeUrl' in refresh_response:
+                        result['iframe_url'] = refresh_response['iframeUrl']
+                        
+                        # Update the session information
+                        session_info['iframe_url'] = refresh_response['iframeUrl']
+                        session_info['updated_at'] = datetime.now().isoformat()
+                        self.testing_sessions[generation_id] = session_info
+                    else:
+                        result['iframe_url'] = session_info.get('iframe_url', '')
+                else:
+                    result['status'] = 'error'
+                    result['errors'].append({
+                        'type': 'system',
+                        'error': refresh_response.get('message', 'Failed to refresh iframe')
+                    })
+            else:
+                # Fallback if n8n service is not available
+                # Just return the existing iframe URL
+                result['status'] = 'success'
+                result['iframe_url'] = session_info.get('iframe_url', '')
+        except Exception as e:
+            print(f"Error refreshing testing iframe: {str(e)}")
+            result['status'] = 'error'
+            result['errors'].append({
+                'type': 'system',
+                'error': str(e)
+            })
+        
+        return result

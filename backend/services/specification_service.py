@@ -3,6 +3,7 @@ import json
 import uuid
 from datetime import datetime
 from services.llm_service import LLMService
+from services.n8n_service import N8nService
 
 class SpecificationService:
     """
@@ -14,6 +15,7 @@ class SpecificationService:
         Initialize the specification service
         """
         self.llm_service = LLMService()
+        self.n8n_service = N8nService()
         
         # In-memory storage for specifications (in a real implementation, this would be a database)
         self.specifications = {}
@@ -24,36 +26,63 @@ class SpecificationService:
     
     def generate_specification(self, context):
         """
-        Generate a module specification based on the provided context
+        Generate a module specification based on the provided context using Gemini 2.5
         
         Args:
             context (dict): Context information from the chat
             
         Returns:
-            tuple: (specification_id, specification)
+            tuple: (specification_id, specification in HTML format)
         """
-        # Generate a unique specification ID
-        specification_id = str(uuid.uuid4())
-        
-        # Prepare the prompt for the LLM
-        prompt = self._prepare_specification_prompt(context)
-        
-        # Call the LLM to generate the specification
-        specification = self._generate_specification_with_llm(prompt, context)
-        
-        # Store the specification
-        self.specifications[specification_id] = {
-            'specification': specification,
-            'context': context,
-            'created_at': datetime.now().isoformat(),
-            'updated_at': datetime.now().isoformat(),
-            'status': 'draft'
-        }
-        
-        # Save the specification to a file
-        self._save_specification(specification_id)
-        
-        return specification_id, specification
+        try:
+            # Generate a unique specification ID
+            specification_id = str(uuid.uuid4())
+            
+            # Ensure context includes Odoo version information
+            if 'odooVersion' not in context:
+                context['odooVersion'] = '16.0'  # Default to Odoo 16.0
+            if 'odooEdition' not in context:
+                context['odooEdition'] = 'community'  # Default to Community Edition
+            
+            # Use n8n workflow with Gemini 2.5 to generate specification if available
+            try:
+                # Call the n8n workflow to generate the specification with Gemini 2.5
+                result = self.n8n_service.generate_specification(context)
+                
+                if result and result.get('status') == 'success':
+                    # Use the specification ID from n8n if provided
+                    if 'specificationId' in result:
+                        specification_id = result['specificationId']
+                    
+                    specification = result['specification']  # This should be HTML content
+                else:
+                    # Fallback to direct LLM call if n8n workflow fails
+                    prompt = self._prepare_specification_prompt(context, html_output=True)
+                    specification = self._generate_specification_with_llm(prompt, context)
+            except Exception as e:
+                # Log the error and fallback to direct LLM call
+                print(f"Error calling n8n workflow: {str(e)}")
+                prompt = self._prepare_specification_prompt(context, html_output=True)
+                specification = self._generate_specification_with_llm(prompt, context)
+            
+            # Store the specification
+            self.specifications[specification_id] = {
+                'specification': specification,
+                'context': context,
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat(),
+                'status': 'draft',
+                'format': 'html'
+            }
+            
+            # Save the specification to a file
+            self._save_specification(specification_id)
+            
+            return specification_id, specification
+        except Exception as e:
+            # Log any errors during specification generation
+            print(f"Error generating specification: {str(e)}")
+            raise
     
     def get_specification(self, specification_id):
         """
@@ -72,17 +101,18 @@ class SpecificationService:
         
         return self.specifications[specification_id]['specification']
     
-    def update_specification(self, specification_id, feedback, sections=None):
+    def update_specification(self, specification_id, feedback, sections=None, approved=False):
         """
-        Update a specification based on user feedback
+        Update a specification based on user feedback using Gemini 2.5
         
         Args:
             specification_id (str): Specification ID
             feedback (str): User feedback
             sections (list, optional): Sections to update
+            approved (bool): Whether the specification is approved for next step
             
         Returns:
-            dict: Updated specification
+            dict: Updated specification in HTML format
         """
         if specification_id not in self.specifications:
             # Try to load from file
@@ -93,12 +123,44 @@ class SpecificationService:
         spec_data = self.specifications[specification_id]
         current_spec = spec_data['specification']
         context = spec_data['context']
+        format_type = spec_data.get('format', 'markdown')
         
-        # Prepare the prompt for the LLM
-        prompt = self._prepare_update_prompt(current_spec, feedback, sections)
-        
-        # Call the LLM to update the specification
-        updated_spec = self._update_specification_with_llm(prompt, current_spec)
+        try:
+            # Try to update specification using n8n workflow with Gemini 2.5
+            try:
+                # Submit the feedback to the n8n workflow directly
+                result = self.n8n_service.submit_specification_feedback(
+                    specification_id, 
+                    feedback,
+                    current_spec,
+                    approved
+                )
+                
+                if result and result.get('status') in ['approved', 'updated']:
+                    # Update with the processed specification from the workflow
+                    if 'specification' in result:
+                        updated_spec = result['specification']
+                    else:
+                        # If no specification is returned but status is success, use current spec
+                        updated_spec = current_spec
+                else:
+                    # Fallback to direct LLM update if workflow failed
+                    is_html = (format_type == 'html')
+                    prompt = self._prepare_update_prompt(current_spec, feedback, sections, html_output=is_html)
+                    updated_spec = self._update_specification_with_llm(prompt, current_spec)
+            except Exception as e:
+                # Log the error and fallback to direct LLM update
+                print(f"Error calling n8n workflow for specification feedback: {str(e)}")
+                is_html = (format_type == 'html')
+                prompt = self._prepare_update_prompt(current_spec, feedback, sections, html_output=is_html)
+                updated_spec = self._update_specification_with_llm(prompt, current_spec)
+        except Exception as e:
+            # Log the error but continue with the original update process
+            print(f"Error in specification update process: {str(e)}")
+            # Fallback to direct LLM update
+            is_html = (format_type == 'html')
+            prompt = self._prepare_update_prompt(current_spec, feedback, sections, html_output=is_html)
+            updated_spec = self._update_specification_with_llm(prompt, current_spec)
         
         # Update the specification
         self.specifications[specification_id]['specification'] = updated_spec
@@ -128,36 +190,61 @@ class SpecificationService:
         # Save the updated specification to a file
         self._save_specification(specification_id)
     
-    def _prepare_specification_prompt(self, context):
+    def _prepare_specification_prompt(self, context, html_output=True):
         """
-        Prepare the prompt for generating a specification
+        Prepare the prompt for Gemini 2.5 to generate a specification
         
         Args:
             context (dict): Context information
+            html_output (bool): Whether to request HTML output format
             
         Returns:
-            str: Formatted prompt
+            str: Prompt for the LLM
         """
-        prompt = """
-        Based on the following information, generate a detailed specification for an Odoo module.
-        The specification should include:
+        requirements = context.get('requirements', 'Build a custom Odoo module')
+        module_name = context.get('module_name', 'Custom Module')
+        module_version = context.get('module_version', '1.0')
+        odoo_version = context.get('odooVersion', '16.0')
+        odoo_edition = context.get('odooEdition', 'community')
         
-        1. Module Name: A clear, descriptive name for the module
-        2. Module Description: A detailed description of the module's purpose and functionality
-        3. Functional Requirements: A list of features and capabilities the module should provide
-        4. Technical Requirements: Technical specifications and implementation details
-        5. User Interface: Description of UI components and user interactions
-        6. Dependencies: Required Odoo modules and external dependencies
+        # Prepare system prompt for Gemini 2.5
+        system_prompt = (
+            "You are an expert Odoo module developer and senior business analyst with over 10 years of experience. "  
+            "Your task is to create a detailed specification document for an Odoo ERP module based on the user's requirements. "
+            "The specification should be comprehensive and cover all aspects of the module's functionality as a professional business analyst would write it."
+        )
         
-        Context Information:
-        """
+        # Prepare user prompt
+        user_prompt = (
+            f"Please create a detailed specification for an Odoo module with the following details:\n\n"
+            f"Module Name: {module_name}\n"
+            f"Module Version: {module_version}\n"
+            f"Odoo Version: {odoo_version}\n"
+            f"Odoo Edition: {odoo_edition}\n\n"
+            f"User Requirements:\n{requirements}\n\n"
+            f"Please include the following sections in your specification:\n"
+            f"1. Module Overview - A high-level description of the module\n"
+            f"2. Functional Requirements - Detailed list of features and functionality\n"
+            f"3. Data Model - Database models, fields, relations, and constraints\n"
+            f"4. User Interface - Views, menus, actions, and UI components\n"
+            f"5. Business Logic - Rules, workflows, and processes\n"
+            f"6. Security - Access rights and permission levels\n"
+            f"7. Technical Notes - Implementation details and dependencies\n"
+            f"8. User Stories - Examples of how users will interact with this module\n\n"
+        )
         
-        # Add context information to the prompt
-        prompt += json.dumps(context, indent=2)
+        if html_output:
+            user_prompt += (
+                f"Format your response as clean, well-structured HTML that can be directly displayed in a web application. "
+                f"Use appropriate HTML tags for headings, paragraphs, lists, tables, etc. Add CSS classes that would work well "
+                f"with Bootstrap 5. Make the document visually appealing and professional."
+            )
+        else:
+            user_prompt += "Format your response as a Markdown document."
         
-        return prompt
+        return f"{system_prompt}\n\n{user_prompt}"
     
-    def _prepare_update_prompt(self, current_spec, feedback, sections=None):
+    def _prepare_update_prompt(self, current_spec, feedback, sections=None, html_output=True):
         """
         Prepare the prompt for updating a specification
         
@@ -165,6 +252,7 @@ class SpecificationService:
             current_spec (dict): Current specification
             feedback (str): User feedback
             sections (list, optional): Sections to update
+            html_output (bool): Whether to request HTML output format
             
         Returns:
             str: Formatted prompt
@@ -189,67 +277,44 @@ class SpecificationService:
         Provide the complete updated specification in the same format as the current specification.
         """
         
+        if html_output:
+            prompt += (
+                f"Format your response as clean, well-structured HTML that can be directly displayed in a web application. "
+                f"Use appropriate HTML tags for headings, paragraphs, lists, tables, etc. Add CSS classes that would work well "
+                f"with Bootstrap 5. Make the document visually appealing and professional."
+            )
+        else:
+            prompt += "Format your response as a Markdown document."
+        
         return prompt
     
     def _generate_specification_with_llm(self, prompt, context):
         """
-        Generate a specification using the LLM
+        Generate a specification using the LLM service (Gemini 2.5 recommended)
         
         Args:
-            prompt (str): Formatted prompt
+            prompt (str): Prompt for the LLM
             context (dict): Context information
             
         Returns:
-            dict: Generated specification
+            str: Generated specification in HTML or Markdown format
         """
-        try:
-            # Call the LLM service to generate the specification
-            provider = self.llm_service.default_provider
-            
-            if provider == 'openai':
-                response = self._generate_with_openai(prompt, context)
-            elif provider == 'anthropic':
-                response = self._generate_with_anthropic(prompt, context)
-            else:
-                print(f"Warning: Unsupported LLM provider '{provider}', falling back to OpenAI")
-                response = self._generate_with_openai(prompt, context)
-            
-            # Parse the response into a structured specification
-            specification = self._parse_specification_response(response, context)
-            
-            return specification
-            
-        except Exception as e:
-            print(f"Error generating specification: {str(e)}")
-            
-            # Fallback to a basic specification if the LLM call fails
-            module_name = context.get('module_name', 'Untitled Module')
-            module_purpose = context.get('module_purpose', 'No purpose specified')
-            
-            return {
-                'module_name': module_name,
-                'module_description': f"A module for {module_purpose}",
-                'functional_requirements': [
-                    f"Implement core functionality for {module_purpose}",
-                    "Provide user-friendly interface",
-                    "Ensure data integrity and validation"
-                ],
-                'technical_requirements': [
-                    "Integration with Odoo core modules",
-                    "Database structure optimization",
-                    "API endpoints for external access"
-                ],
-                'user_interface': [
-                    "Main dashboard view",
-                    "List and form views for records",
-                    "Reporting interface"
-                ],
-                'dependencies': [
-                    "Odoo Base (base)",
-                    "Odoo Web (web)",
-                    "Odoo Mail (mail)"
-                ]
-            }
+        # Call the LLM service to generate the specification
+        # Request HTML output if specified in context
+        is_html = context.get('format', 'html') == 'html'
+        response = self.llm_service.generate_text(prompt, model="gemini-2.5" if is_html else None)
+        
+        # Process the response
+        if is_html and not response.strip().startswith("<"):
+            # If HTML was requested but not received, convert markdown to HTML
+            try:
+                import markdown
+                response = markdown.markdown(response)
+            except ImportError:
+                # If markdown package is not available, return as is
+                pass
+        
+        return response
     
     def _generate_with_openai(self, prompt, context):
         """

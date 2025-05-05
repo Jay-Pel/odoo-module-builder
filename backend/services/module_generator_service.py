@@ -8,18 +8,23 @@ from datetime import datetime
 from threading import Thread
 from services.llm_service import LLMService
 from services.development_plan_service import DevelopmentPlanService
+from services.n8n_service import N8nService
 
 class ModuleGeneratorService:
     """
     Service for generating Odoo modules
     """
     
-    def __init__(self):
+    def __init__(self, n8n_service=None):
         """
         Initialize the module generator service
+        
+        Args:
+            n8n_service (N8nService, optional): N8n service for workflow integration
         """
         self.llm_service = LLMService()
         self.development_plan_service = DevelopmentPlanService()
+        self.n8n_service = n8n_service if n8n_service else N8nService()
         
         # In-memory storage for generation processes (in a real implementation, this would be a database)
         self.generations = {}
@@ -36,7 +41,7 @@ class ModuleGeneratorService:
     
     def start_generation(self, plan_id):
         """
-        Start the module generation process
+        Start the module generation process using Claude 3.7 Sonnet
         
         Args:
             plan_id (str): Development plan ID
@@ -56,6 +61,15 @@ class ModuleGeneratorService:
             print(f"Error getting development plan: {str(e)}")
             plan = self._create_default_plan(plan_id)
         
+        # Ensure the plan has Odoo version information
+        if 'odooVersion' not in plan:
+            plan['odooVersion'] = '16.0'  # Default to Odoo 16.0
+        if 'odooEdition' not in plan:
+            plan['odooEdition'] = 'community'  # Default to Community Edition
+        
+        # Save the updated plan
+        self.development_plan_service.update_plan(plan_id, plan)
+        
         # Generate a unique generation ID
         generation_id = str(uuid.uuid4())
         
@@ -65,6 +79,8 @@ class ModuleGeneratorService:
             'status': 'in-progress',
             'created_at': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat(),
+            'odoo_version': plan.get('odooVersion', '16.0'),
+            'odoo_edition': plan.get('odooEdition', 'community'),
             'progress': [
                 {
                     'id': 1,
@@ -75,37 +91,37 @@ class ModuleGeneratorService:
                 {
                     'id': 2,
                     'title': 'Generating Models and Business Logic',
-                    'description': 'Creating Python classes and implementing core functionality.',
+                    'description': 'Creating Python classes and implementing core functionality using Claude 3.7 Sonnet.',
                     'status': 'pending'
                 },
                 {
                     'id': 3,
                     'title': 'Creating Views and UI Components',
-                    'description': 'Generating XML views and JavaScript components.',
+                    'description': 'Generating XML views and JavaScript components for the Odoo interface.',
                     'status': 'pending'
                 },
                 {
                     'id': 4,
                     'title': 'Implementing Security and Access Rules',
-                    'description': 'Setting up proper security configurations.',
+                    'description': 'Setting up proper security and access right configurations.',
                     'status': 'pending'
                 },
                 {
                     'id': 5,
                     'title': 'Running Backend Tests',
-                    'description': 'Testing models, business logic, and API endpoints.',
+                    'description': 'Testing models, business logic, and API endpoints on Odoo instance.',
                     'status': 'pending'
                 },
                 {
                     'id': 6,
                     'title': 'Running Frontend Tests',
-                    'description': 'Testing UI rendering and user interactions.',
+                    'description': 'Testing UI components and user interactions with headless browser.',
                     'status': 'pending'
                 },
                 {
                     'id': 7,
-                    'title': 'Packaging Module',
-                    'description': 'Creating the final module package for download.',
+                    'title': 'Generating Documentation',
+                    'description': 'Creating user and developer documentation for the module.',
                     'status': 'pending'
                 }
             ],
@@ -236,7 +252,7 @@ class ModuleGeneratorService:
                 time.sleep(2)  # Simulate work
                 
                 # Generate model files and business logic
-                self._generate_models(module_dir, plan)
+                self._generate_module_files(generation_id)
                 
                 self._update_progress(generation_id, 2, 'completed')
             except Exception as e:
@@ -305,7 +321,20 @@ class ModuleGeneratorService:
             
             self._update_progress(generation_id, 7, 'in-progress')
             
-            # Step 7: Package the module
+            # Step 7: Generate documentation
+            try:
+                # Add a timeout to prevent getting stuck
+                time.sleep(2)  # Simulate work
+                
+                # Generate documentation
+                self._generate_documentation(generation_id, plan)
+                
+                self._update_progress(generation_id, 7, 'completed')
+            except Exception as e:
+                print(f"Error generating documentation: {str(e)}")
+                self._update_progress(generation_id, 7, 'failed')
+            
+            # Step 8: Package the module
             try:
                 # Add a timeout to prevent getting stuck
                 time.sleep(2)  # Simulate work
@@ -318,10 +347,10 @@ class ModuleGeneratorService:
                 self.generations[generation_id]['status'] = 'completed'
                 self.generations[generation_id]['updated_at'] = datetime.now().isoformat()
                 self.generations[generation_id]['module_path'] = zip_path
-                self._update_progress(generation_id, 7, 'completed')
+                self._update_progress(generation_id, 8, 'completed')
             except Exception as e:
                 print(f"Error packaging module: {str(e)}")
-                self._update_progress(generation_id, 7, 'failed')
+                self._update_progress(generation_id, 8, 'failed')
                 
                 # Even if packaging fails, mark the generation as completed
                 self.generations[generation_id]['status'] = 'completed'
@@ -339,6 +368,244 @@ class ModuleGeneratorService:
             # Save the generation status to a file
             self._save_generation(generation_id)
             
+    def _generate_module_files(self, generation_id):
+        """
+        Generate the module files based on the development plan
+        
+        Args:
+            generation_id (str): Generation ID
+        """
+        try:
+            generation = self.generations[generation_id]
+            plan_id = generation['plan_id']
+            plan = self.development_plan_service.get_plan(plan_id)
+            
+            if not plan:
+                self._update_generation_status(generation_id, 'failed', 'Development plan not found')
+                return
+            
+            # Create the generation directory
+            generation_dir = os.path.join(self.generations_dir, generation_id)
+            os.makedirs(generation_dir, exist_ok=True)
+            
+            # Create a directory for the generated files
+            module_name = plan.get('module_name', 'odoo_module').lower().replace(' ', '_')
+            module_dir = os.path.join(generation_dir, module_name)
+            os.makedirs(module_dir, exist_ok=True)
+            
+            # Update the first task status
+            self._update_task_status(generation_id, 1, 'completed', 'Module structure initialized')
+            
+            # Try to use the n8n workflow for code generation with Claude 3.7 Sonnet
+            try:
+                # Prepare metadata for the workflow
+                metadata = {
+                    'moduleName': module_name,
+                    'moduleVersion': plan.get('module_version', '1.0'),
+                    'odooVersion': plan.get('odooVersion', '16.0'),
+                    'odooEdition': plan.get('odooEdition', 'community'),
+                    'sessionId': f"session-{plan_id}",
+                    'model': 'claude-3-7-sonnet'  # Specify Claude 3.7 Sonnet model
+                }
+                
+                # Call the n8n coding workflow with Claude 3.7 Sonnet
+                result = self.n8n_service.generate_module_code(plan_id, plan.get('specification', {}), metadata)
+                
+                if result and result.get('status') == 'success' and not result.get('fallback_required', False):
+                    # If n8n workflow was successful, extract the generated files
+                    if 'files' in result:
+                        # Write the files received from n8n to the module directory
+                        for file_info in result['files']:
+                            file_path = os.path.join(module_dir, file_info['path'])
+                            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                            with open(file_path, 'w') as f:
+                                f.write(file_info['content'])
+                        
+                        # Update task statuses based on workflow response
+                        self._update_task_status(generation_id, 2, 'completed', 'Models and business logic generated')
+                        self._update_task_status(generation_id, 3, 'completed', 'Views and UI components generated')
+                        self._update_task_status(generation_id, 4, 'completed', 'Security and access rules implemented')
+                    else:
+                        # Fallback to the default implementation if no files were returned
+                        self._fallback_generate_module_files(generation_id, module_dir, plan)
+                else:
+                    # Fallback to the default implementation if workflow failed
+                    self._fallback_generate_module_files(generation_id, module_dir, plan)
+            except Exception as e:
+                print(f"Error calling n8n coding workflow: {str(e)}")
+                # Fallback to the default implementation
+                self._fallback_generate_module_files(generation_id, module_dir, plan)
+            
+            # Create a zip file of the module
+            module_zip_path = os.path.join(self.modules_dir, f"{module_name}.zip")
+            self._create_module_zip(module_dir, module_zip_path)
+            
+            # Store the module path in the generation object
+            self.generations[generation_id]['module_path'] = module_zip_path
+            
+            # Generate documentation
+            self._generate_documentation(generation_id, plan)
+            
+            # Update the generation status
+            self._update_generation_status(generation_id, 'completed')
+            
+        except Exception as e:
+            print(f"Error generating module files: {str(e)}")
+            self._update_generation_status(generation_id, 'failed', str(e))
+            
+    def _fallback_generate_module_files(self, generation_id, module_dir, plan):
+        """
+        Fallback method to generate module files if n8n workflow fails
+        
+        Args:
+            generation_id (str): Generation ID
+            module_dir (str): Path to the module directory
+            plan (dict): Development plan
+        """
+        # Simulate models generation
+        time.sleep(2)  # Simulate processing time
+        self._generate_dummy_models(module_dir, plan)
+        self._update_task_status(generation_id, 2, 'completed', 'Models and business logic generated')
+        
+        # Simulate views generation
+        time.sleep(2)  # Simulate processing time
+        self._generate_dummy_views(module_dir, plan)
+        self._update_task_status(generation_id, 3, 'completed', 'Views and UI components generated')
+        
+        # Simulate security generation
+        time.sleep(2)  # Simulate processing time
+        self._generate_dummy_security(module_dir, plan)
+        self._update_task_status(generation_id, 4, 'completed', 'Security and access rules implemented')
+        
+    def _generate_dummy_models(self, module_dir, plan):
+        """
+        Generate dummy model files
+        
+        Args:
+            module_dir (str): Path to the module directory
+            plan (dict): Development plan
+        """
+        models_dir = os.path.join(module_dir, 'models')
+        os.makedirs(models_dir, exist_ok=True)
+        
+        # Create __init__.py
+        with open(os.path.join(models_dir, '__init__.py'), 'w') as f:
+            f.write("from . import models\n")
+        
+        # Create models.py
+        with open(os.path.join(models_dir, 'models.py'), 'w') as f:
+            f.write("""from odoo import models, fields, api
+from odoo.exceptions import ValidationError
+
+class MainModel(models.Model):
+    _name = 'odoo_module.main_model'
+    _description = 'Main Model'
+    
+    name = fields.Char(string='Name', required=True)
+    description = fields.Text(string='Description')
+    active = fields.Boolean(string='Active', default=True)
+    
+    @api.constrains('name')
+    def _check_name(self):
+        for record in self:
+            if len(record.name) < 3:
+                raise ValidationError(_('Name must be at least 3 characters long.'))
+""")
+
+    def _generate_dummy_views(self, module_dir, plan):
+        """
+        Generate dummy view files
+        
+        Args:
+            module_dir (str): Path to the module directory
+            plan (dict): Development plan
+        """
+        views_dir = os.path.join(module_dir, 'views')
+        os.makedirs(views_dir, exist_ok=True)
+        
+        # Create views.xml
+        with open(os.path.join(views_dir, 'views.xml'), 'w') as f:
+            f.write("""<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_odoo_module_main_model_form" model="ir.ui.view">
+        <field name="name">odoo_module.main_model.form</field>
+        <field name="model">odoo_module.main_model</field>
+        <field name="arch" type="xml">
+            <form string="Main Model">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="description"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <record id="view_odoo_module_main_model_tree" model="ir.ui.view">
+        <field name="name">odoo_module.main_model.tree</field>
+        <field name="model">odoo_module.main_model</field>
+        <field name="arch" type="xml">
+            <tree string="Main Models">
+                <field name="name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    
+    <record id="action_odoo_module_main_model" model="ir.actions.act_window">
+        <field name="name">Main Models</field>
+        <field name="res_model">odoo_module.main_model</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    
+    <menuitem id="menu_odoo_module_root" name="Odoo Module"/>
+    <menuitem id="menu_odoo_module_main" parent="menu_odoo_module_root" name="Main"/>
+    <menuitem id="menu_odoo_module_main_model" parent="menu_odoo_module_main" action="action_odoo_module_main_model"/>
+</odoo>""")
+
+    def _generate_dummy_security(self, module_dir, plan):
+        """
+        Generate dummy security files
+        
+        Args:
+            module_dir (str): Path to the module directory
+            plan (dict): Development plan
+        """
+        security_dir = os.path.join(module_dir, 'security')
+        os.makedirs(security_dir, exist_ok=True)
+        
+        # Create ir.model.access.csv
+        with open(os.path.join(security_dir, 'ir.model.access.csv'), 'w') as f:
+            f.write("""id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+            access_odoo_module_main_model,access_odoo_module_main_model,model_odoo_module_main_model,base.group_user,1,1,1,1""")
+        
+        # Create an __init__.py file in the module root
+        with open(os.path.join(module_dir, '__init__.py'), 'w') as f:
+            f.write("from . import models\n")
+        
+        # Create a __manifest__.py file in the module root
+        with open(os.path.join(module_dir, '__manifest__.py'), 'w') as f:
+            f.write("""{
+    'name': 'Odoo Module',
+    'version': '1.0',
+    'category': 'Extra Tools',
+    'summary': 'Custom Odoo Module',
+    'description': '''\n        A custom Odoo module generated by the Odoo Module Builder.\n    ''',
+    'author': 'Odoo Module Builder',
+    'website': 'https://www.example.com',
+    'depends': ['base'],
+    'data': [
+        'security/ir.model.access.csv',
+        'views/views.xml',
+    ],
+    'demo': [],
+    'installable': True,
+    'application': True,
+    'auto_install': False,
+}""")
+
     def _create_default_plan(self, plan_id):
         """
         Create a default plan structure when a plan is not found

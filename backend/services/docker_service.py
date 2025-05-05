@@ -5,6 +5,7 @@ import socket
 import random
 from threading import Thread
 import logging
+from services.n8n_service import N8nService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +25,7 @@ class DockerService:
         self.max_port = 9069  # Maximum port to use (allows for 1000 containers)
         self.host_ip = self._get_host_ip()
         self.use_mock = True  # Use mock mode by default
+        self.n8n_service = N8nService()
         
         # Try to initialize Docker client if available
         try:

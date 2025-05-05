@@ -64,13 +64,13 @@ export default {
   ],
   devServer: {
     historyApiFallback: true,
-    port: 3000,
+    port: 8080,
     hot: true,
     open: true,
     proxy: [
       {
         context: ['/api'],
-        target: 'http://localhost:5678',
+        target: 'http://localhost:3000',
         secure: false,
         changeOrigin: true
       }

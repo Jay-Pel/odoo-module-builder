@@ -4,14 +4,18 @@ import json
 import tempfile
 from services.module_generator_service import ModuleGeneratorService
 from services.testing_service import TestingService
+from services.n8n_service import N8nService
+from services.config_service import ConfigService
 from services.docker_service import DockerService
 
 # Initialize Blueprint
 module_generator_bp = Blueprint('module_generator', __name__)
 
-# Initialize services
-module_generator_service = ModuleGeneratorService()
-testing_service = TestingService()
+# Initialize services with proper dependencies
+config_service = ConfigService()
+n8n_service = N8nService(config_service=config_service)
+module_generator_service = ModuleGeneratorService(n8n_service=n8n_service)
+testing_service = TestingService(n8n_service=n8n_service, config_service=config_service)
 docker_service = DockerService()
 
 @module_generator_bp.route('/generate', methods=['POST'])
