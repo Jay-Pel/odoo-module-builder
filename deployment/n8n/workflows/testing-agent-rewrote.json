@@ -1,0 +1,374 @@
+{
+  "name": "Testing Agent Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "testing-agent",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const sessionId = $input.item.json.sessionId;\nconst packageId = $input.item.json.packageId;\nconst versionId = $input.item.json.versionId;\nconst s3Path = $input.item.json.s3Path || `s3://odoo-module-builder/modules/${sessionId}/${versionId}`;\n\nconst containerName = `odoo-test-${sessionId}-${Date.now()}`;\nconst containerPort = 8069 + (parseInt(sessionId.replace(/\\D/g, '')) % 1000); \n\nconst dockerHost = \"localhost\"; \n\nreturn {\n  sessionId,\n  packageId,\n  versionId,\n  s3Path,\n  containerName,\n  containerPort,\n  dockerHost,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Prepare Testing Environment",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "mkdir -p /tmp/odoo-test-modules/${sessionId}/${versionId}\n\necho \"# Module downloaded from ${s3Path}\" > /tmp/odoo-test-modules/${sessionId}/${versionId}/README.md\n\ncat > /tmp/odoo-test-modules/${sessionId}/docker-compose.yml << EOF\nversion: '3'\nservices:\n  odoo:\n    image: odoo:15.0\n    container_name: ${containerName}\n    ports:\n      - \"${containerPort}:8069\"\n    environment:\n      - POSTGRES_PASSWORD=odoo\n      - POSTGRES_USER=odoo\n      - POSTGRES_DB=postgres\n    volumes:\n      - /tmp/odoo-test-modules/${sessionId}/${versionId}:/mnt/extra-addons\n    depends_on:\n      - db\n  db:\n    image: postgres:13\n    container_name: ${containerName}-db\n    environment:\n      - POSTGRES_PASSWORD=odoo\n      - POSTGRES_USER=odoo\n      - POSTGRES_DB=postgres\nEOF\n\ncd /tmp/odoo-test-modules/${sessionId}\ndocker-compose up -d\n\necho \"Waiting for Odoo to start...\"",
+        "executionTimeout": 180,
+        "workingDirectory": "/tmp",
+        "environmentVariables": {
+          "sessionId": "={{ $node[\"Prepare Testing Environment\"].json.sessionId }}",
+          "versionId": "={{ $node[\"Prepare Testing Environment\"].json.versionId }}",
+          "s3Path": "={{ $node[\"Prepare Testing Environment\"].json.s3Path }}",
+          "containerName": "={{ $node[\"Prepare Testing Environment\"].json.containerName }}",
+          "containerPort": "={{ $node[\"Prepare Testing Environment\"].json.containerPort }}"
+        }
+      },
+      "name": "Start Odoo Container",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://{{ $node[\"Prepare Testing Environment\"].json.dockerHost }}:{{ $node[\"Prepare Testing Environment\"].json.containerPort }}",
+        "options": {
+          "method": "GET",
+          "timeout": 60000,
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "name": "Check Odoo Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const dockerHost = $node[\"Prepare Testing Environment\"].json.dockerHost;\nconst containerPort = $node[\"Prepare Testing Environment\"].json.containerPort;\nconst sessionId = $node[\"Prepare Testing Environment\"].json.sessionId;\nconst odooUrl = `http://${dockerHost}:${containerPort}`;\n\nconst testScenarios = [\n  {\n    name: \"Module Installation Test\",\n    steps: [\n      { action: \"navigate\", url: `${odooUrl}/web/login` },\n      { action: \"fill\", selector: \"input[name='login']\", value: \"admin\" },\n      { action: \"fill\", selector: \"input[name='password']\", value: \"admin\" },\n      { action: \"click\", selector: \"button.btn-primary\" },\n      { action: \"navigate\", url: `${odooUrl}/web#menu_id=5&action=94` },\n      { action: \"click\", selector: \".o_searchview_input\" },\n      { action: \"fill\", selector: \".o_searchview_input\", value: \"Custom Module\" },\n      { action: \"wait\", seconds: 2 },\n      { action: \"click\", selector: \".o_app:first-child\" },\n      { action: \"click\", selector: \"button.btn-primary\" },\n      { action: \"wait\", seconds: 10 },\n      { action: \"screenshot\", name: \"module_installed\" }\n    ]\n  }\n];\n\nreturn {\n  sessionId,\n  odooUrl,\n  testScenarios,\n  moduleToTest: $node[\"Prepare Testing Environment\"].json.packageId,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Prepare MCP Tests",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:3000/api/mcp/run-test",
+        "options": {
+          "method": "POST",
+          "body": "json",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "sessionId",
+                "value": "={{ $node[\"Prepare MCP Tests\"].json.sessionId }}"
+              },
+              {
+                "name": "testScenarios",
+                "value": "={{ $node[\"Prepare MCP Tests\"].json.testScenarios }}"
+              },
+              {
+                "name": "odooUrl",
+                "value": "={{ $node[\"Prepare MCP Tests\"].json.odooUrl }}"
+              }
+            ]
+          },
+          "timeout": 120000
+        }
+      },
+      "name": "Run MCP Tests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "let testPassed = false;\nlet feedback = \"\";\n\ntry {\n  const testResults = $node[\"Run MCP Tests\"].json;\n  \n  if (testResults && testResults.success) {\n    testPassed = true;\n    feedback = \"All automated tests passed successfully.\";\n  } else {\n    testPassed = false;\n    feedback = \"Automated tests failed: \" + (testResults.error || \"Unknown error\");\n  }\n} catch (error) {\n  testPassed = false;\n  feedback = \"Error processing test results: \" + error.message;\n}\n\nreturn {\n  sessionId: $node[\"Prepare MCP Tests\"].json.sessionId,\n  packageId: $node[\"Prepare MCP Tests\"].json.moduleToTest,\n  testPassed,\n  feedback,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Analyze Test Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $node[\"Analyze Test Results\"].json.testPassed }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Tests Passed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5678/webhook/user-testing",
+        "options": {
+          "method": "POST",
+          "body": "json",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "sessionId",
+                "value": "={{ $node[\"Analyze Test Results\"].json.sessionId }}"
+              },
+              {
+                "name": "packageId",
+                "value": "={{ $node[\"Analyze Test Results\"].json.packageId }}"
+              },
+              {
+                "name": "testsPassed",
+                "value": "true"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Trigger User Testing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5678/webhook/coding-feedback",
+        "options": {
+          "method": "POST",
+          "body": "json",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "sessionId",
+                "value": "={{ $node[\"Analyze Test Results\"].json.sessionId }}"
+              },
+              {
+                "name": "packageId",
+                "value": "={{ $node[\"Analyze Test Results\"].json.packageId }}"
+              },
+              {
+                "name": "feedback",
+                "value": "={{ $node[\"Analyze Test Results\"].json.feedback }}"
+              },
+              {
+                "name": "approved",
+                "value": "false"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Send Feedback to Coding Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /tmp/odoo-test-modules/${sessionId}\ndocker-compose down -v\nrm -rf /tmp/odoo-test-modules/${sessionId}\n\necho \"Cleaned up test environment for session ${sessionId}\"",
+        "executionTimeout": 60,
+        "workingDirectory": "/tmp",
+        "environmentVariables": {
+          "sessionId": "={{ $node[\"Prepare Testing Environment\"].json.sessionId }}"
+        }
+      },
+      "name": "Cleanup Test Environment",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $node[\"Analyze Test Results\"].json }}",
+        "options": {}
+      },
+      "name": "HTTP Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Testing Environment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Testing Environment": {
+      "main": [
+        [
+          {
+            "node": "Start Odoo Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Odoo Container": {
+      "main": [
+        [
+          {
+            "node": "Check Odoo Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Odoo Status": {
+      "main": [
+        [
+          {
+            "node": "Prepare MCP Tests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare MCP Tests": {
+      "main": [
+        [
+          {
+            "node": "Run MCP Tests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run MCP Tests": {
+      "main": [
+        [
+          {
+            "node": "Analyze Test Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Test Results": {
+      "main": [
+        [
+          {
+            "node": "Tests Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tests Passed?": {
+      "main": [
+        [
+          {
+            "node": "Trigger User Testing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Feedback to Coding Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger User Testing": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Test Environment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Feedback to Coding Agent": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Test Environment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Test Environment": {
+      "main": [
+        [
+          {
+            "node": "HTTP Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

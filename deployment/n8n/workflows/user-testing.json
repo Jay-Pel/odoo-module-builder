@@ -1,0 +1,323 @@
+{
+  "name": "User Testing & Delivery Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "user-testing",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract session ID and package info from the webhook payload\nconst sessionId = $input.item.json.sessionId;\nconst packageId = $input.item.json.packageId;\nconst userId = $input.item.json.userId || sessionId.split('-')[0]; // Extract user ID from session ID if not provided\n\n// Generate a unique container name for user acceptance testing\nconst containerName = `odoo-accept-${userId}-${sessionId.substring(0, 8)}`;\nconst containerPort = 9069 + (parseInt(sessionId.replace(/\\D/g, '')) % 1000); // Calculate a unique port\n\n// In a real implementation, this would request a Docker host from a pool manager\nconst dockerHost = \"localhost\"; // For demo purposes, using localhost\n\nreturn {\n  sessionId,\n  packageId,\n  userId,\n  containerName,\n  containerPort,\n  dockerHost,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Prepare User Testing Environment",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=# This would typically run on the selected Docker host\n# For demo purposes, assuming we're running on localhost\n\n# Create a directory for the acceptance environment\nmkdir -p /tmp/odoo-accept-modules/${userId}/${sessionId}\n\n# In a real implementation, this would download the final module from S3\n# For demo purposes, we'll simulate it\necho \"# Module downloaded for acceptance testing - ${packageId}\" > /tmp/odoo-accept-modules/${userId}/${sessionId}/README.md\n\n# Create a docker-compose file for Odoo with the module mounted\ncat > /tmp/odoo-accept-modules/${userId}/docker-compose.yml << EOF\nversion: '3'\nservices:\n  odoo:\n    image: odoo:15.0\n    container_name: ${containerName}\n    ports:\n      - \"${containerPort}:8069\"\n    environment:\n      - POSTGRES_PASSWORD=odoo\n      - POSTGRES_USER=odoo\n      - POSTGRES_DB=postgres\n    volumes:\n      - /tmp/odoo-accept-modules/${userId}/${sessionId}:/mnt/extra-addons\n    depends_on:\n      - db\n  db:\n    image: postgres:13\n    container_name: ${containerName}-db\n    environment:\n      - POSTGRES_PASSWORD=odoo\n      - POSTGRES_USER=odoo\n      - POSTGRES_DB=postgres\nEOF\n\n# Start the Odoo container for user acceptance testing\ncd /tmp/odoo-accept-modules/${userId}\ndocker-compose up -d\n\n# Wait for Odoo to start (this would include pre-installing the module in a real implementation)\necho \"Starting Odoo acceptance environment for user ${userId}...\"",
+        "executionTimeout": 180,
+        "workingDirectory": "/tmp",
+        "environmentVariables": {
+          "userId": "={{ $node[\"Prepare User Testing Environment\"].json.userId }}",
+          "sessionId": "={{ $node[\"Prepare User Testing Environment\"].json.sessionId }}",
+          "packageId": "={{ $node[\"Prepare User Testing Environment\"].json.packageId }}",
+          "containerName": "={{ $node[\"Prepare User Testing Environment\"].json.containerName }}",
+          "containerPort": "={{ $node[\"Prepare User Testing Environment\"].json.containerPort }}"
+        }
+      },
+      "name": "Start Acceptance Environment",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate the iframe URL and module details for the frontend\nconst dockerHost = $node[\"Prepare User Testing Environment\"].json.dockerHost;\nconst containerPort = $node[\"Prepare User Testing Environment\"].json.containerPort;\nconst sessionId = $node[\"Prepare User Testing Environment\"].json.sessionId;\nconst userId = $node[\"Prepare User Testing Environment\"].json.userId;\n\n// Generate the URL that will be displayed in the iframe\nconst iframeUrl = `http://${dockerHost}:${containerPort}`;\n\n// Generate an authentication token for the iframe (in a real implementation)\nconst authToken = `accept-${userId}-${Date.now()}`;\n\n// In a real implementation, this would store the acceptance instance details in a database\n// keyed by the session ID and user ID for reference\n\nreturn {\n  status: \"success\",\n  sessionId,\n  userId,\n  iframeUrl,\n  authToken,\n  packageId: $node[\"Prepare User Testing Environment\"].json.packageId,\n  containerName: $node[\"Prepare User Testing Environment\"].json.containerName,\n  timestamp: new Date().toISOString(),\n  expirationTime: new Date(Date.now() + 3600000).toISOString(), // 1 hour expiration\n  credentials: {\n    username: \"admin\",\n    password: \"admin\"\n  }\n};"
+      },
+      "name": "Prepare Frontend Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $node[\"Prepare Frontend Data\"].json }}",
+        "options": {}
+      },
+      "name": "HTTP Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "user-acceptance-result",
+        "options": {}
+      },
+      "name": "Acceptance Result Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process user acceptance result\nconst sessionId = $input.item.json.sessionId;\nconst userId = $input.item.json.userId;\nconst packageId = $input.item.json.packageId;\nconst accepted = $input.item.json.accepted || false;\nconst feedback = $input.item.json.feedback || \"\";\n\n// In a real implementation, this would:\n// 1. If accepted, finalize the module for delivery/download\n// 2. If rejected, send the feedback to the coding agent for improvements\n\nif (accepted) {\n  // Prepare for module delivery\n  const downloadUrl = `https://odoo-module-builder.example.com/download/${packageId}`;\n  \n  return {\n    status: \"accepted\",\n    sessionId,\n    userId,\n    packageId,\n    message: \"Module accepted by user!\",\n    downloadUrl,\n    timestamp: new Date().toISOString()\n  };\n} else {\n  // Send feedback for improvement\n  return {\n    status: \"rejected\",\n    sessionId,\n    userId,\n    packageId,\n    feedback,\n    message: \"Module rejected by user, sending feedback for improvements.\",\n    timestamp: new Date().toISOString()\n  };\n}"
+      },
+      "name": "Process Acceptance Result",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $node[\"Process Acceptance Result\"].json.status }}",
+              "operation": "equal",
+              "value2": "accepted"
+            }
+          ]
+        }
+      },
+      "name": "Is Accepted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Prepare the module for download/delivery\nconst packageId = $node[\"Process Acceptance Result\"].json.packageId;\nconst sessionId = $node[\"Process Acceptance Result\"].json.sessionId;\nconst userId = $node[\"Process Acceptance Result\"].json.userId;\n\n// In a real implementation, this would:\n// 1. Create the final module zip archive\n// 2. Upload it to S3 or store it in a database\n// 3. Generate a secure, time-limited download URL\n// 4. Update the user's account with the completed module\n\n// For demo purposes, we're simulating this process\nconst downloadUrl = `https://odoo-module-builder.example.com/api/download?id=${packageId}&user=${userId}`;\n\nreturn {\n  status: \"ready_for_download\",\n  packageId,\n  sessionId,\n  userId,\n  downloadUrl,\n  expirationTime: new Date(Date.now() + 86400000).toISOString(), // 24 hours expiration\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Prepare For Delivery",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5678/webhook/coding-feedback",
+        "options": {
+          "method": "POST",
+          "body": "json",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "sessionId",
+                "value": "={{ $node[\"Process Acceptance Result\"].json.sessionId }}"
+              },
+              {
+                "name": "packageId",
+                "value": "={{ $node[\"Process Acceptance Result\"].json.packageId }}"
+              },
+              {
+                "name": "feedback",
+                "value": "={{ $node[\"Process Acceptance Result\"].json.feedback }}"
+              },
+              {
+                "name": "approved",
+                "value": "false"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Send Feedback For Improvements",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=# Clean up the Odoo acceptance environment\n# In a real implementation, this would be triggered by a timeout or explicit action\ncd /tmp/odoo-accept-modules/${userId}\ndocker-compose down -v\n\n# Only remove the session directory, keep the user directory for potential reuse\nrm -rf /tmp/odoo-accept-modules/${userId}/${sessionId}\n\n# In a real implementation, this would release the Docker host back to the pool\necho \"Cleaned up acceptance environment for user ${userId}, session ${sessionId}\"",
+        "executionTimeout": 60,
+        "workingDirectory": "/tmp",
+        "environmentVariables": {
+          "userId": "={{ $node[\"Process Acceptance Result\"].json.userId }}",
+          "sessionId": "={{ $node[\"Process Acceptance Result\"].json.sessionId }}"
+        }
+      },
+      "name": "Cleanup Acceptance Environment",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $node[\"Process Acceptance Result\"].json }}",
+        "options": {}
+      },
+      "name": "Return Acceptance Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        500
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare User Testing Environment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare User Testing Environment": {
+      "main": [
+        [
+          {
+            "node": "Start Acceptance Environment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Acceptance Environment": {
+      "main": [
+        [
+          {
+            "node": "Prepare Frontend Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Frontend Data": {
+      "main": [
+        [
+          {
+            "node": "HTTP Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acceptance Result Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Acceptance Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Acceptance Result": {
+      "main": [
+        [
+          {
+            "node": "Is Accepted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Accepted?": {
+      "main": [
+        [
+          {
+            "node": "Prepare For Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Feedback For Improvements",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare For Delivery": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Acceptance Environment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Feedback For Improvements": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Acceptance Environment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Acceptance Environment": {
+      "main": [
+        [
+          {
+            "node": "Return Acceptance Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

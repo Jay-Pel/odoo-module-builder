@@ -1,0 +1,369 @@
+{
+  "name": "Coding Agent Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coding-agent",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    { 
+      "parameters": {
+        "functionCode": "// Extract session ID and specification from the webhook payload\nconst sessionId = $input.item.json.sessionId;\nconst specificationId = $input.item.json.specificationId;\nconst specification = $input.item.json.specification;\nconst feedback = $input.item.json.feedback || null;\n\n// Generate a unique version ID for this code generation\nconst versionId = `v${Date.now()}`;\n\n// Format for LLM\nconst context = `You are an expert Odoo module developer. Your task is to create Python code for an Odoo module based on the given specification. ${feedback ? 'You must incorporate the feedback provided to improve the code.' : ''}\n\nSpecification:\n${specification}\n`;\n\nconst prompt = `Based on the specification, generate complete and functional Odoo module code. Make sure to include:\n\n1. __init__.py files\n2. __manifest__.py with all dependencies\n3. Model definitions with fields, constraints, and methods\n4. Views XML files (form, tree, search, etc.)\n5. Security files (ir.model.access.csv)\n6. Business logic implementation\n7. Any other necessary files\n\nProvide each file with its full path within the module structure. Format the response as a JSON object where keys are file paths and values are the file contents.`;\n\nreturn {\n  sessionId,\n  specificationId,\n  context,\n  prompt,\n  versionId,\n  feedback\n};"
+      },
+      "name": "Prepare LLM Request",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "apiKey",
+        "apiKey": "={{ $env.OPENAI_API_KEY }}",
+        "baseUrl": "https://api.openai.com/v1",
+        "model": "gpt-4",
+        "prompt": "={{ $node[\"Prepare LLM Request\"].json.context + $node[\"Prepare LLM Request\"].json.prompt }}",
+        "options": {
+          "temperature": 0.1,
+          "maxTokens": 8000,
+          "topP": 1,
+          "frequencyPenalty": 0,
+          "presencePenalty": 0,
+          "stopSequences": []
+        }
+      },
+      "name": "Generate Module Code",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse the LLM response to extract the JSON object\nlet moduleFiles;\ntry {\n  // The LLM might wrap the JSON in code blocks, need to extract just the JSON part\n  const response = $node[\"Generate Module Code\"].json.text;\n  \n  // Try to find JSON block in the response\n  const jsonMatch = response.match(/```json\\s*([\\s\\S]*?)```/) || response.match(/```\\s*([\\s\\S]*?)```/) || [null, response];\n  const jsonStr = jsonMatch[1] || response;\n  \n  // Parse the JSON\n  moduleFiles = JSON.parse(jsonStr);\n} catch (error) {\n  // If parsing fails, return the error\n  return {\n    status: \"error\",\n    message: \"Failed to parse LLM response as JSON\",\n    error: error.message,\n    rawResponse: $node[\"Generate Module Code\"].json.text\n  };\n}\n\n// Generate a unique module code package ID\nconst packageId = `pkg-${$node[\"Prepare LLM Request\"].json.sessionId}-${$node[\"Prepare LLM Request\"].json.versionId}`;\n\n// In a real implementation, this would create a zip file and store it to S3 or a file system\n// For demo purposes, we're just returning the module files data\nreturn {\n  status: \"success\",\n  sessionId: $node[\"Prepare LLM Request\"].json.sessionId,\n  specificationId: $node[\"Prepare LLM Request\"].json.specificationId,\n  packageId,\n  versionId: $node[\"Prepare LLM Request\"].json.versionId,\n  moduleFiles,\n  fileCount: Object.keys(moduleFiles).length,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Process Code Files",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// In a real implementation, this would create the module zip file\n// and store it to S3 or a file system\n\nconst data = $node[\"Process Code Files\"].json;\nconst sessionId = data.sessionId;\nconst packageId = data.packageId;\n\n// Create paths for module storage\nconst s3Path = `s3://odoo-module-builder/modules/${sessionId}/${data.versionId}`;\nconst localPath = `/tmp/odoo-modules/${sessionId}/${data.versionId}`;\n\n// Add the paths to the response\nreturn {\n  ...data,\n  s3Path,\n  localPath\n};"
+      },
+      "name": "Store Module Package",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5678/webhook/testing-agent",
+        "options": {
+          "method": "POST",
+          "body": "json",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "sessionId",
+                "value": "={{ $node[\"Store Module Package\"].json.sessionId }}"
+              },
+              {
+                "name": "packageId",
+                "value": "={{ $node[\"Store Module Package\"].json.packageId }}"
+              },
+              {
+                "name": "versionId",
+                "value": "={{ $node[\"Store Module Package\"].json.versionId }}"
+              },
+              {
+                "name": "s3Path",
+                "value": "={{ $node[\"Store Module Package\"].json.s3Path }}"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Trigger Testing Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $node[\"Store Module Package\"].json }}",
+        "options": {}
+      },
+      "name": "HTTP Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coding-feedback",
+        "options": {}
+      },
+      "name": "Feedback Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process feedback for the module code\nconst sessionId = $input.item.json.sessionId;\nconst packageId = $input.item.json.packageId;\nconst feedback = $input.item.json.feedback || \"\";\nconst approved = $input.item.json.approved || false;\n\n// If approved, no need to regenerate code\nif (approved) {\n  return {\n    status: \"approved\",\n    sessionId,\n    packageId,\n    approved,\n    message: \"Module code approved, proceeding to user acceptance testing\",\n    nextStep: \"user-testing\",\n    timestamp: new Date().toISOString()\n  };\n} \n\n// If not approved, prepare to regenerate with feedback\nreturn {\n  status: \"feedback_received\",\n  sessionId,\n  packageId,\n  feedback,\n  approved: false,\n  message: \"Feedback received, regenerating code\",\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Process Feedback",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $node[\"Process Feedback\"].json.approved }}",
+              "operation": "equal",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "name": "Is Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5678/webhook/user-testing",
+        "options": {
+          "method": "POST",
+          "body": "json",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "sessionId",
+                "value": "={{ $node[\"Process Feedback\"].json.sessionId }}"
+              },
+              {
+                "name": "packageId",
+                "value": "={{ $node[\"Process Feedback\"].json.packageId }}"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Trigger User Testing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5678/webhook/coding-agent",
+        "options": {
+          "method": "POST",
+          "body": "json",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "sessionId",
+                "value": "={{ $node[\"Process Feedback\"].json.sessionId }}"
+              },
+              {
+                "name": "feedback",
+                "value": "={{ $node[\"Process Feedback\"].json.feedback }}"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Regenerate with Feedback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $node[\"Process Feedback\"].json }}",
+        "options": {}
+      },
+      "name": "Return Feedback Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare LLM Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare LLM Request": {
+      "main": [
+        [
+          {
+            "node": "Generate Module Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Module Code": {
+      "main": [
+        [
+          {
+            "node": "Process Code Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Code Files": {
+      "main": [
+        [
+          {
+            "node": "Store Module Package",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Module Package": {
+      "main": [
+        [
+          {
+            "node": "Trigger Testing Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feedback Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Feedback": {
+      "main": [
+        [
+          {
+            "node": "Is Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Approved?": {
+      "main": [
+        [
+          {
+            "node": "Trigger User Testing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Regenerate with Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger User Testing": {
+      "main": [
+        [
+          {
+            "node": "Return Feedback Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regenerate with Feedback": {
+      "main": [
+        [
+          {
+            "node": "Return Feedback Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

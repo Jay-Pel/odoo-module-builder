@@ -1,0 +1,270 @@
+{
+  "name": "Specification Agent Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "specification-agent",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract session ID and user requirements from the webhook payload\nconst sessionId = $input.item.json.sessionId || $input.item.json.userId + '-' + Date.now();\nconst requirements = $input.item.json.requirements;\nconst moduleVersion = $input.item.json.moduleVersion || '1.0.0';\nconst moduleName = $input.item.json.moduleName || 'odoo_module';\n\n// Format for LLM\nconst context = `You are an Odoo module specification expert. Your task is to create a detailed specification document for an Odoo module based on the user's requirements.\n\nUser Requirements:\n${requirements}\n\nModule Name: ${moduleName}\nModule Version: ${moduleVersion}\n`;\n\nconst prompt = `Based on the user requirements, create a comprehensive Odoo module specification document. Include the following sections:\n\n1. Module Overview\n2. Features and Functionality\n3. Data Models (with fields, types, and relationships)\n4. Security Requirements and Access Rights\n5. UI Components (views, menus, actions)\n6. Business Logic Implementation\n7. Dependencies\n8. Installation Notes\n\nFormat the output as a structured Markdown document that can later be edited by the user.`;\n\nreturn {\n  sessionId,\n  context,\n  prompt,\n  moduleVersion,\n  moduleName,\n  requirements\n};"
+      },
+      "name": "Prepare LLM Request",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "apiKey",
+        "apiKey": "={{ $env.OPENAI_API_KEY }}",
+        "baseUrl": "https://api.openai.com/v1",
+        "model": "gpt-4",
+        "prompt": "={{ $node[\"Prepare LLM Request\"].json.context + $node[\"Prepare LLM Request\"].json.prompt }}",
+        "options": {
+          "temperature": 0.1,
+          "maxTokens": 4000,
+          "topP": 1,
+          "frequencyPenalty": 0,
+          "presencePenalty": 0,
+          "stopSequences": []
+        }
+      },
+      "name": "Generate Specification",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Combine all the data we need to return\nconst sessionId = $node[\"Prepare LLM Request\"].json.sessionId;\nconst specification = $node[\"Generate Specification\"].json.text;\nconst moduleVersion = $node[\"Prepare LLM Request\"].json.moduleVersion;\nconst moduleName = $node[\"Prepare LLM Request\"].json.moduleName;\nconst requirements = $node[\"Prepare LLM Request\"].json.requirements;\n\n// Generate a unique specification ID\nconst specificationId = `spec-${sessionId}-${Date.now()}`;\n\n// Store data (in a real implementation, this would save to S3 or a database)\n// For demo purposes, we're just returning the data\nreturn {\n  status: \"success\",\n  sessionId,\n  specificationId,\n  specification,\n  moduleVersion,\n  moduleName,\n  requirements,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Format Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $node[\"Format Response\"].json }}",
+        "options": {}
+      },
+      "name": "HTTP Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "specification-feedback",
+        "options": {}
+      },
+      "name": "Feedback Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract updated specification from feedback\nconst sessionId = $input.item.json.sessionId;\nconst specificationId = $input.item.json.specificationId;\nconst updatedSpecification = $input.item.json.specification;\nconst approved = $input.item.json.approved || false;\n\n// If approved, trigger the coding agent workflow\nif (approved) {\n  // In a real implementation, this would call the Coding Agent workflow\n  return {\n    status: \"approved\",\n    sessionId,\n    specificationId,\n    specification: updatedSpecification,\n    approved,\n    nextStep: \"coding-agent\",\n    timestamp: new Date().toISOString()\n  };\n} else {\n  // Just save the updated specification\n  return {\n    status: \"updated\",\n    sessionId,\n    specificationId,\n    specification: updatedSpecification,\n    approved,\n    timestamp: new Date().toISOString()\n  };\n}"
+      },
+      "name": "Process Feedback",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $node[\"Process Feedback\"].json.approved }}",
+              "operation": "equal",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "name": "Is Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5678/webhook/coding-agent",
+        "options": {
+          "method": "POST",
+          "body": "json",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "sessionId",
+                "value": "={{ $node[\"Process Feedback\"].json.sessionId }}"
+              },
+              {
+                "name": "specificationId",
+                "value": "={{ $node[\"Process Feedback\"].json.specificationId }}"
+              },
+              {
+                "name": "specification",
+                "value": "={{ $node[\"Process Feedback\"].json.specification }}"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Trigger Coding Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $node[\"Process Feedback\"].json }}",
+        "options": {}
+      },
+      "name": "Return Feedback Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        850,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare LLM Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare LLM Request": {
+      "main": [
+        [
+          {
+            "node": "Generate Specification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Specification": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "HTTP Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feedback Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Feedback": {
+      "main": [
+        [
+          {
+            "node": "Is Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Approved?": {
+      "main": [
+        [
+          {
+            "node": "Trigger Coding Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Feedback Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Coding Agent": {
+      "main": [
+        [
+          {
+            "node": "Return Feedback Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
