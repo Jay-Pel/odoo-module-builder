@@ -30,21 +30,18 @@
     {
       "parameters": {
         "authentication": "apiKey",
-        "apiKey": "={{ $env.OPENAI_API_KEY }}",
-        "baseUrl": "https://api.openai.com/v1",
-        "model": "gpt-4",
+        "apiKey": "={{ $env.ANTHROPIC_API_KEY }}",
+        "baseUrl": "https://api.anthropic.com",
+        "model": "claude-3-sonnet-20240229",
         "prompt": "={{ $node[\"Prepare LLM Request\"].json.context + $node[\"Prepare LLM Request\"].json.prompt }}",
         "options": {
           "temperature": 0.1,
           "maxTokens": 8000,
-          "topP": 1,
-          "frequencyPenalty": 0,
-          "presencePenalty": 0,
-          "stopSequences": []
+          "topP": 1
         }
       },
       "name": "Generate Module Code",
-      "type": "n8n-nodes-base.openAi",
+      "type": "n8n-nodes-base.anthropic",
       "typeVersion": 1,
       "position": [
         650,
@@ -77,7 +74,7 @@
     },
     {
       "parameters": {
-        "url": "=http://localhost:5678/webhook/testing-agent",
+        "url": "=http://localhost:3000/webhook/testing-agent",
         "options": {
           "method": "POST",
           "body": "json",
