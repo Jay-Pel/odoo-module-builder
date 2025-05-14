@@ -2,9 +2,11 @@ import os
 import json
 import uuid
 import base64
+import time
+import logging
 from datetime import datetime
 import requests
-from anthropic import Anthropic
+from anthropic import Anthropic, APITimeoutError, APIError, APIConnectionError, RateLimitError, APIStatusError
 
 class LLMService:
     """
@@ -17,27 +19,157 @@ class LLMService:
         """
         # Load API key from environment variable
         self.anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
+        self.api_key_warning_shown = False
         
         if not self.anthropic_api_key:
-            print("WARNING: No Anthropic API key found. Set ANTHROPIC_API_KEY in your .env file.")
-        else:
-            print("Anthropic API key loaded successfully.")
+            print("\n⚠️ WARNING: NO VALID ANTHROPIC API KEY FOUND! ⚠️")
+            print("The application will start, but specification generation will fail.")
+            print("Please set a valid ANTHROPIC_API_KEY in your backend/.env file.")
+            print("The existing API key in the template may have expired or is invalid.")
+            print("You can get a valid API key from https://console.anthropic.com/ \n")
+            self.client = None
+            self.api_key_warning_shown = True
+            return
+            
+        print("Anthropic API key loaded. Attempting to initialize client...")
         
-        # Initialize Anthropic client - with explicit parameters to avoid issues
-        if self.anthropic_api_key:
+        # Initialize Anthropic client with the new version's initialization pattern
+        try:
+            # Create client with only the required API key parameter
+            # Based on the latest Anthropic SDK documentation
+            self.client = Anthropic(api_key=self.anthropic_api_key)
+            
+            # Test the client with a simple request to verify it works
             try:
-                # First try with just the API key
-                self.client = Anthropic(api_key=self.anthropic_api_key)
-            except TypeError as e:
-                # If that fails, try creating a partial client for basic functionality
-                print(f"WARNING: Error creating Anthropic client: {e}")
-                print("Using mock mode for LLM services")
-                self.client = None
-        else:
+                self.client.messages.create(
+                    model="claude-3-7-sonnet-20250219",
+                    max_tokens=10,
+                    messages=[{"role": "user", "content": "Hello"}]
+                )
+                print("✅ Successfully initialized and tested Anthropic client!")
+            except Exception as client_test_error:
+                print(f"⚠️ Anthropic client initialized but test request failed: {str(client_test_error)}")
+                # Continue with the initialized client
+                
+        except Exception as e:
+            # Log the detailed error but don't fall back to mock mode
+            print(f"❌ ERROR initializing Anthropic client: {str(e)}")
+            print(f"API Details: Using Anthropic version {getattr(Anthropic, '__version__', 'unknown')}")
+            print("The application will start, but specification generation will not work properly.")
+            print("Please ensure your Anthropic API key is valid and try again.")
             self.client = None
         
         # In-memory storage for conversations (in a real implementation, this would be a database)
         self.conversations = {}
+    
+    def _generate_mock_response(self):
+        """
+        This method should never be called as we require real LLM responses
+        
+        Returns:
+            Never returns, always raises an exception
+        """
+        raise Exception("Mock responses are not allowed. Real LLM responses are required for this application.")
+    
+    def generate_text(self, prompt, model=None, max_retries=3, initial_backoff=2):
+        """
+        Generate text using the Anthropic Claude API with retry logic and enhanced error handling
+        
+        Args:
+            prompt (str): Prompt for the LLM
+            model (str, optional): Model to use (claude-3-7-sonnet, etc.)
+            max_retries (int): Maximum number of retry attempts
+            initial_backoff (int): Initial backoff time in seconds
+            
+        Returns:
+            str: Generated text
+            
+        Raises:
+            Exception: If the text generation fails after all retries
+        """
+        if not self.client:
+            if self.api_key_warning_shown:
+                error_message = (
+                    "ERROR: Cannot generate specification - No valid Anthropic API key.\n" 
+                    "You need a real API key to generate specifications.\n"
+                    "Please update your backend/.env file with a valid ANTHROPIC_API_KEY"
+                )
+            else:
+                error_message = "Anthropic client is not properly initialized. Real LLM responses are required."
+            
+            print(f"\n⚠️ {error_message}\n")
+            raise Exception(error_message)
+        
+        # Use claude-3-7-sonnet for highest quality responses if not specified
+        model_name = model or "claude-3-7-sonnet-20250219"
+        print(f"[LLM Service] Generating text with model: {model_name}")
+        print(f"[LLM Service] Prompt (first 100 chars): {prompt[:100]}...")
+        
+        # Implement retry with exponential backoff
+        for attempt in range(max_retries):
+            try:
+                # Create the API request with increased timeout (5 minutes)
+                response = self.client.messages.create(
+                    model=model_name,
+                    max_tokens=4000,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ],
+                    timeout=300  # 5 minutes timeout in seconds
+                )
+                
+                generated_text = response.content[0].text
+                print(f"[LLM Service] Generated response (first 100 chars): {generated_text[:100]}...")
+                return generated_text
+                
+            except APITimeoutError as e:
+                backoff = initial_backoff * (2 ** attempt)
+                error_details = f"Timeout error: {str(e)}. Retrying in {backoff} seconds... (Attempt {attempt+1}/{max_retries})"
+                print(f"\n⚠️ {error_details}\n")
+                
+                # If this is the last attempt, raise the exception
+                if attempt == max_retries - 1:
+                    raise Exception(f"API Timeout after {max_retries} attempts: {str(e)}. The Anthropic API is taking too long to respond.")
+                time.sleep(backoff)
+                
+            except RateLimitError as e:
+                backoff = initial_backoff * (2 ** attempt)
+                error_details = f"Rate limit exceeded: {str(e)}. Retrying in {backoff} seconds... (Attempt {attempt+1}/{max_retries})"
+                print(f"\n⚠️ {error_details}\n")
+                
+                # If this is the last attempt, raise the exception with detailed information
+                if attempt == max_retries - 1:
+                    raise Exception(f"Rate limit exceeded after {max_retries} attempts: {str(e)}. Please check your Anthropic API rate limits.")
+                time.sleep(backoff)
+                
+            except APIConnectionError as e:
+                backoff = initial_backoff * (2 ** attempt)
+                error_details = f"Connection error: {str(e)}. Retrying in {backoff} seconds... (Attempt {attempt+1}/{max_retries})"
+                print(f"\n⚠️ {error_details}\n")
+                
+                # If this is the last attempt, raise the exception
+                if attempt == max_retries - 1:
+                    raise Exception(f"API Connection error after {max_retries} attempts: {str(e)}. Please check your internet connection or if there are regional restrictions.")
+                time.sleep(backoff)
+                
+            except APIStatusError as e:
+                error_message = f"API Status Error: {str(e)}. Status code: {e.status_code}"
+                print(f"\n❌ {error_message}\n")
+                
+                # For specific status codes, provide more detailed error messages
+                if e.status_code == 401:
+                    raise Exception("Authentication error: Your Anthropic API key is invalid. Please check your API key.")
+                elif e.status_code == 403:
+                    raise Exception("Authorization error: Your Anthropic API key does not have permission to use this model or feature.")
+                elif e.status_code == 404:
+                    raise Exception(f"The requested model '{model_name}' was not found. Please check if the model name is correct.")
+                else:
+                    raise Exception(f"API error with status code {e.status_code}: {str(e)}")
+            
+            except Exception as e:
+                error_message = f"Failed to generate text with Anthropic: {str(e)}. Real LLM responses are required."
+                print(f"\n❌ {error_message}\n")
+                raise Exception(error_message)
     
     def generate_conversation_id(self):
         """
@@ -177,7 +309,7 @@ class LLMService:
             tuple: (response, extracted_context, next_step)
         """
         if not self.client:
-            return "API key not configured. Please set the ANTHROPIC_API_KEY environment variable.", context, None
+            raise Exception("Anthropic client is not initialized. API key may be missing or invalid.")
         
         try:
             # System prompt providing context and instructions
@@ -210,7 +342,7 @@ class LLMService:
             
             # Call the Anthropic API
             response = self.client.messages.create(
-                model="claude-3-sonnet-20240229",  # Can use claude-3-opus-20240229 for higher quality
+                model="claude-3-7-sonnet-20250219",  # Using Claude 3.7 Sonnet model
                 system=system_prompt,
                 messages=messages,
                 max_tokens=1000,
@@ -230,7 +362,8 @@ class LLMService:
             # Handle API errors
             error_message = f"Error calling Anthropic API: {str(e)}"
             print(error_message)
-            return error_message, context, None
+            # Don't provide a mock response, raise the error so it can be addressed
+            raise Exception(f"Error calling Anthropic API: {str(e)}. Real LLM responses are required, cannot use fallback content.")
     
     def _extract_context(self, response_text, current_context):
         """

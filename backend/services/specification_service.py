@@ -1,9 +1,14 @@
 import os
 import json
 import uuid
+import logging
 from datetime import datetime
 from services.llm_service import LLMService
 from services.n8n_service import N8nService
+
+# Set up module-specific logger
+logger = logging.getLogger('odoo_module_builder.specification_service')
+logger.setLevel(logging.INFO)
 
 class SpecificationService:
     """
@@ -26,7 +31,7 @@ class SpecificationService:
     
     def generate_specification(self, context):
         """
-        Generate a module specification based on the provided context using Gemini 2.5
+        Generate a module specification based on the provided context using Claude 3.7
         
         Args:
             context (dict): Context information from the chat
@@ -38,32 +43,31 @@ class SpecificationService:
             # Generate a unique specification ID
             specification_id = str(uuid.uuid4())
             
+            logger.info(f"[SpecService] Generating specification with Claude 3.7. Initial context: {context}")
+
             # Ensure context includes Odoo version information
             if 'odooVersion' not in context:
                 context['odooVersion'] = '16.0'  # Default to Odoo 16.0
             if 'odooEdition' not in context:
                 context['odooEdition'] = 'community'  # Default to Community Edition
             
-            # Use n8n workflow with Gemini 2.5 to generate specification if available
-            try:
-                # Call the n8n workflow to generate the specification with Gemini 2.5
-                result = self.n8n_service.generate_specification(context)
-                
-                if result and result.get('status') == 'success':
-                    # Use the specification ID from n8n if provided
-                    if 'specificationId' in result:
-                        specification_id = result['specificationId']
-                    
-                    specification = result['specification']  # This should be HTML content
-                else:
-                    # Fallback to direct LLM call if n8n workflow fails
-                    prompt = self._prepare_specification_prompt(context, html_output=True)
-                    specification = self._generate_specification_with_llm(prompt, context)
-            except Exception as e:
-                # Log the error and fallback to direct LLM call
-                print(f"Error calling n8n workflow: {str(e)}")
-                prompt = self._prepare_specification_prompt(context, html_output=True)
-                specification = self._generate_specification_with_llm(prompt, context)
+            # First check if the Anthropic API key is valid
+            if not self.llm_service.anthropic_api_key:
+                logger.error("[SpecService] No Anthropic API key found. Cannot generate specification with Claude.")
+                raise ValueError("No valid Anthropic API key found. Please set ANTHROPIC_API_KEY in your .env file.")
+            
+            # First, prepare the prompt
+            prompt = self._prepare_specification_prompt(context, html_output=True)
+            logger.info(f"[SpecService] Prepared prompt for Claude 3.7 (first 200 chars): {prompt[:200]}")
+            
+            # Call Claude directly with the prepared prompt
+            # Use the sonnet model for better results (more economical than haiku but still powerful)
+            specification = self.llm_service.generate_text(
+                prompt, 
+                model="claude-3-7-sonnet-20250219"
+            )
+            
+            logger.info(f"[SpecService] Specification from Claude 3.7 (first 200 chars): {str(specification)[:200]}")
             
             # Store the specification
             self.specifications[specification_id] = {
@@ -72,17 +76,173 @@ class SpecificationService:
                 'created_at': datetime.now().isoformat(),
                 'updated_at': datetime.now().isoformat(),
                 'status': 'draft',
-                'format': 'html'
+                'format': 'html',
+                'model': 'claude-3-7-sonnet-20250219'
             }
             
             # Save the specification to a file
             self._save_specification(specification_id)
             
+            logger.info(f"[SpecService] Final specification_id: {specification_id} generated with Claude 3.7")
             return specification_id, specification
         except Exception as e:
             # Log any errors during specification generation
-            print(f"Error generating specification: {str(e)}")
+            logger.error(f"[SpecService] Critical error in generate_specification: {str(e)}")
             raise
+    
+    def generate_specification_fallback(self, context):
+        """
+        Fallback mechanism to generate a module specification when Claude 3.7 is unavailable
+        This uses an older model or n8n workflow as an alternative
+        
+        Args:
+            context (dict): Context information from the chat
+            
+        Returns:
+            tuple: (specification_id, specification in HTML format)
+        """
+        try:
+            # Generate a unique specification ID
+            specification_id = str(uuid.uuid4())
+            
+            logger.info(f"[SpecService] Using fallback mechanism to generate specification. Context: {context}")
+
+            # Ensure context includes Odoo version information
+            if 'odooVersion' not in context:
+                context['odooVersion'] = '16.0'
+            if 'odooEdition' not in context:
+                context['odooEdition'] = 'community'
+            
+            # Try different approaches for fallback
+            specification = None
+            model_used = "fallback"
+            
+            # First try n8n workflow with alternative model
+            try:
+                logger.info("[SpecService] Attempting to use n8n workflow for fallback generation")
+                result = self.n8n_service.generate_specification(context)
+                
+                if result and result.get('status') == 'success':
+                    if 'specificationId' in result:
+                        specification_id = result['specificationId']
+                    
+                    specification = result['specification']
+                    model_used = "n8n_workflow"
+                    logger.info(f"[SpecService] Specification generated using n8n workflow (first 200 chars): {str(specification)[:200]}")
+            except Exception as n8n_error:
+                logger.warning(f"[SpecService] n8n workflow failed: {str(n8n_error)}")
+                # Continue to next fallback method
+            
+            # If n8n failed, try with an older Claude model directly
+            if not specification:
+                try:
+                    logger.info("[SpecService] Attempting fallback with Claude 3 Haiku model")
+                    prompt = self._prepare_specification_prompt(context, html_output=True)
+                    specification = self.llm_service.generate_text(
+                        prompt, 
+                        model="claude-3-haiku-20240307",  # Older, more reliable model
+                        max_retries=2                   # Fewer retries for fallback
+                    )
+                    model_used = "claude-3-haiku-20240307"
+                    logger.info(f"[SpecService] Specification generated with Claude Haiku (first 200 chars): {str(specification)[:200]}")
+                except Exception as claude_error:
+                    logger.warning(f"[SpecService] Claude Haiku fallback failed: {str(claude_error)}")
+                    # Continue to next fallback method
+            
+            # Last resort: try with a template-based approach if all else fails
+            if not specification:
+                logger.warning("[SpecService] All LLM-based fallbacks failed, using template-based generation")
+                specification = self._generate_template_based_specification(context)
+                model_used = "template"
+            
+            # Store the specification with fallback information
+            self.specifications[specification_id] = {
+                'specification': specification,
+                'context': context,
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat(),
+                'status': 'draft',
+                'format': 'html',
+                'model': model_used,
+                'is_fallback': True
+            }
+            
+            # Save the specification to a file
+            self._save_specification(specification_id)
+            
+            logger.info(f"[SpecService] Fallback specification generated with ID: {specification_id} using: {model_used}")
+            return specification_id, specification
+        except Exception as e:
+            logger.error(f"[SpecService] Critical error in fallback specification generation: {str(e)}")
+            raise
+    
+    def _generate_template_based_specification(self, context):
+        """
+        Generate a basic specification using templates when all LLM options fail
+        
+        Args:
+            context (dict): Context information
+            
+        Returns:
+            str: HTML formatted specification based on templates
+        """
+        module_name = context.get('module_name', 'New Module')
+        requirements = context.get('requirements', 'No requirements provided')
+        odoo_version = context.get('odooVersion', '16.0')
+        
+        # Create a simple HTML template
+        specification = f"""
+        <div class="module-specification">
+            <h1>{module_name} - Module Specification</h1>
+            
+            <div class="module-info">
+                <h2>Module Information</h2>
+                <p><strong>Name:</strong> {module_name}</p>
+                <p><strong>Version:</strong> {context.get('module_version', '1.0.0')}</p>
+                <p><strong>Category:</strong> {context.get('category', 'Uncategorized')}</p>
+                <p><strong>Author:</strong> {context.get('author', 'Anonymous')}</p>
+                <p><strong>Odoo Version:</strong> {odoo_version}</p>
+                <p><strong>Edition:</strong> {context.get('odooEdition', 'Community')}</p>
+                <p><strong>License:</strong> {context.get('license', 'LGPL-3')}</p>
+            </div>
+            
+            <div class="module-description">
+                <h2>Module Description</h2>
+                <p>{requirements}</p>
+            </div>
+            
+            <div class="functional-requirements">
+                <h2>Functional Requirements</h2>
+                <p>This is a template-based specification generated as a fallback when LLM-based generation is unavailable.</p>
+                <p>Please edit this specification to add detailed functional requirements based on your needs.</p>
+            </div>
+            
+            <div class="technical-requirements">
+                <h2>Technical Requirements</h2>
+                <p>Based on the requirements, the module will need to be built using Odoo {odoo_version}.</p>
+                <p>Consider the following technical aspects:</p>
+                <ul>
+                    <li>Database models to store the required data</li>
+                    <li>Views to display and interact with the data</li>
+                    <li>Business logic in Python</li>
+                    <li>Integration with other Odoo modules if needed</li>
+                </ul>
+            </div>
+            
+            <div class="dependencies">
+                <h2>Dependencies</h2>
+                <p><strong>Base Dependencies:</strong> {context.get('dependencies', 'base')}</p>
+            </div>
+            
+            <div class="note">
+                <h2>Note</h2>
+                <p>This specification was generated using a template-based fallback system since the AI-powered generation was unavailable.</p>
+                <p>You may want to enhance this specification with more details before proceeding to development.</p>
+            </div>
+        </div>
+        """
+        
+        return specification
     
     def get_specification(self, specification_id):
         """
@@ -288,33 +448,30 @@ class SpecificationService:
         
         return prompt
     
-    def _generate_specification_with_llm(self, prompt, context):
+    def _generate_specification_with_llm(self, prompt, context, model=None):
         """
-        Generate a specification using the LLM service (Gemini 2.5 recommended)
+        Generate a specification using Claude with a prepared prompt
         
         Args:
-            prompt (str): Prompt for the LLM
+            prompt (str): Prepared prompt for the LLM
             context (dict): Context information
+            model (str, optional): Model name to use, defaults to claude-3-7-sonnet
             
         Returns:
-            str: Generated specification in HTML or Markdown format
+            str: Specification in text format
         """
-        # Call the LLM service to generate the specification
-        # Request HTML output if specified in context
-        is_html = context.get('format', 'html') == 'html'
-        response = self.llm_service.generate_text(prompt, model="gemini-2.5" if is_html else None)
-        
-        # Process the response
-        if is_html and not response.strip().startswith("<"):
-            # If HTML was requested but not received, convert markdown to HTML
-            try:
-                import markdown
-                response = markdown.markdown(response)
-            except ImportError:
-                # If markdown package is not available, return as is
-                pass
-        
-        return response
+        try:
+            # Use specified model or default to sonnet for balance of quality and cost
+            model_name = model or "claude-3-7-sonnet-20250219"
+            logger.info(f"[SpecService] Generating specification with model: {model_name}")
+            
+            # Claude response with maximum relevance and accuracy
+            result = self.llm_service.generate_text(prompt, model=model_name)
+            return result
+        except Exception as e:
+            logger.error(f"[SpecService] Error in _generate_specification_with_llm using {model}: {str(e)}")
+            # Re-raise the exception to be handled by the caller
+            raise
     
     def _generate_with_openai(self, prompt, context):
         """
