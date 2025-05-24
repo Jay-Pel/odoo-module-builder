@@ -8,10 +8,10 @@ export interface AppError {
 
 export type ErrorType = 
   | 'NETWORK_ERROR'
-  | 'N8N_CONNECTION_ERROR'
   | 'VALIDATION_ERROR'
   | 'GENERATION_ERROR'
   | 'TESTING_ERROR'
+  | 'DOWNLOAD_ERROR'
   | 'UNKNOWN_ERROR'
 
 class ErrorService {
@@ -43,42 +43,6 @@ class ErrorService {
     return error
   }
 
-  handleN8nError(error: any, context: string): AppError {
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      return this.createError(
-        'N8N_CONNECTION_ERROR',
-        'Unable to connect to n8n service. Please check if n8n is running.',
-        error,
-        context
-      )
-    }
-
-    if (error.status >= 400 && error.status < 500) {
-      return this.createError(
-        'VALIDATION_ERROR',
-        'Invalid request data sent to n8n service.',
-        error,
-        context
-      )
-    }
-
-    if (error.status >= 500) {
-      return this.createError(
-        'N8N_CONNECTION_ERROR',
-        'n8n service is experiencing issues. Please try again later.',
-        error,
-        context
-      )
-    }
-
-    return this.createError(
-      'UNKNOWN_ERROR',
-      'An unexpected error occurred while communicating with n8n.',
-      error,
-      context
-    )
-  }
-
   handleNetworkError(error: any, context: string): AppError {
     return this.createError(
       'NETWORK_ERROR',
@@ -90,8 +54,6 @@ class ErrorService {
 
   getErrorMessage(error: AppError): string {
     switch (error.code) {
-      case 'N8N_CONNECTION_ERROR':
-        return 'Unable to connect to the AI service. Please try again or contact support if the issue persists.'
       case 'NETWORK_ERROR':
         return 'Network connection failed. Please check your internet connection and try again.'
       case 'VALIDATION_ERROR':
@@ -100,6 +62,8 @@ class ErrorService {
         return 'Failed to generate module. Please try again with different requirements.'
       case 'TESTING_ERROR':
         return 'Testing failed. Please review the generated module and try again.'
+      case 'DOWNLOAD_ERROR':
+        return 'Failed to download module. Please try again or contact support if the issue persists.'
       default:
         return 'An unexpected error occurred. Please try again.'
     }

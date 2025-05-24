@@ -40,7 +40,7 @@ export class GeminiService {
 
   constructor() {
     this.apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
-    this.model = process.env.NEXT_PUBLIC_GEMINI_MODEL || 'gemini-2.0-flash-exp'
+    this.model = process.env.NEXT_PUBLIC_GEMINI_MODEL || 'gemini-2.5-flash-preview-05-20'
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models'
 
     if (!this.apiKey) {

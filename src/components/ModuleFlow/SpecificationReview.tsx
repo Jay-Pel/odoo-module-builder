@@ -28,7 +28,7 @@ export default function SpecificationReview({
   const [showFeedback, setShowFeedback] = useState(false)
   const [submittingFeedback, setSubmittingFeedback] = useState(false)
   const [editedSpecification, setEditedSpecification] = useState(specification.specification)
-  const [changeCount, setChangeCount] = useState(0)
+  const changeCount = (specification.metadata?.version || 1) - 1
   const maxChanges = 5
 
   const handleSubmitFeedback = async () => {
@@ -39,13 +39,13 @@ export default function SpecificationReview({
     setSubmittingFeedback(false)
     setFeedback('')
     setShowFeedback(false)
-    setChangeCount(prev => prev + 1)
   }
 
-  // Update edited specification when props change
+  // Update edited specification when props change and reset it fully
   React.useEffect(() => {
     setEditedSpecification(specification.specification)
-  }, [specification.specification])
+    console.log('Specification updated, new version:', specification.metadata?.version)
+  }, [specification.specification, specification.metadata?.version])
 
   if (loading || submittingFeedback) {
     const title = submittingFeedback ? "Processing Changes" : "Generating Module Specification"
@@ -80,6 +80,7 @@ export default function SpecificationReview({
               <Card variant="glass" className="h-full">
                 <CardContent className="p-4">
                   <MarkdownEditor
+                    key={`spec-${specification.specificationId}-v${specification.metadata?.version || 1}`}
                     content={editedSpecification}
                     onChange={setEditedSpecification}
                     readOnly={false}

@@ -7,7 +7,7 @@ import SpecificationReview from '@/components/ModuleFlow/SpecificationReview'
 import CodeGeneration from '@/components/ModuleFlow/CodeGeneration'
 import TestingDashboard from '@/components/ModuleFlow/TestingDashboard'
 import { UserRequirements, SpecificationResponse, specificationAdapter } from '@/services/specificationAdapter'
-import { CodingResponse, n8nService } from '@/services/n8nService'
+import { CodingResponse, codingService } from '@/services/codingService'
 import NoSSR from '@/components/Common/NoSSR'
 import { useToast } from '@/components/UI/ToastProvider'
 import WaveLoadingAnimation from '@/components/Common/WaveLoadingAnimation'
@@ -45,20 +45,25 @@ export default function Home() {
   }
 
   const handleSpecificationApproved = async () => {
-    if (!specification) return
+    if (!specification || !userRequirements) return
     
     setLoading(true)
     try {
       showSuccess('Specification approved! Starting code generation...')
-      const codeResponse = await n8nService.generateCode(
+      setCurrentState('generation') // Show generation page immediately
+      
+      const codeResponse = await codingService.generateCode(
         specification.specificationId,
-        specification.specification
+        specification.specification,
+        userRequirements.moduleName,
+        userRequirements.odooVersion
       )
       setGenerationResponse(codeResponse)
-      setCurrentState('generation')
-      showSuccess('Code generation started successfully!')
+      showSuccess('Code generation completed successfully!')
     } catch (error) {
       console.error('Error generating code:', error)
+      // If generation fails, go back to specification state
+      setCurrentState('specification')
       // Error is automatically handled by errorService and shown via toast
     } finally {
       setLoading(false)
@@ -94,7 +99,7 @@ export default function Home() {
 
   const handleCheckCodingStatus = async (generationId: string) => {
     try {
-    return await n8nService.checkCodingStatus(generationId)
+    return await codingService.checkCodingStatus(generationId)
     } catch (error) {
       console.error('Error checking coding status:', error)
       // Error is automatically handled by errorService and shown via toast
@@ -116,6 +121,14 @@ export default function Home() {
       return <WaveLoadingAnimation 
         title="Generating Module Specification" 
         subtitle="Our AI is analyzing your requirements and creating a detailed specification..." 
+      />
+    }
+
+    // Show loading animation during code generation
+    if (loading && currentState === 'generation') {
+      return <WaveLoadingAnimation 
+        title="Generating Odoo Module" 
+        subtitle="Claude AI is creating your complete Odoo module with all necessary files..." 
       />
     }
 
@@ -144,10 +157,10 @@ export default function Home() {
         )
       
       case 'generation':
-        if (!generationResponse) return null
+        if (!generationResponse?.data) return null
         return (
           <CodeGeneration 
-            generationId={generationResponse.generationId}
+            generationId={generationResponse.data.generationId}
             initialResponse={generationResponse}
             onComplete={handleGenerationComplete}
             onRunTests={() => setCurrentState('testing')}

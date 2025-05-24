@@ -15,7 +15,23 @@ import {
   Upload,
   Send
 } from 'lucide-react'
-import { TestingResponse, UserTestingResponse } from '@/services/n8nService'
+
+// Local interfaces for testing functionality
+interface TestingResponse {
+  testResults: {
+    passed: boolean;
+    errors: string[];
+    fixes: string[];
+  };
+  screenshots: string[];
+  status: string;
+}
+
+interface UserTestingResponse {
+  odooUrl: string;
+  iframeUrl: string;
+  status: string;
+}
 
 interface TestingDashboardProps {
   testingResponse?: TestingResponse
