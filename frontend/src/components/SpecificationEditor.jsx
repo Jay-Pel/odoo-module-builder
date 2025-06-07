@@ -9,6 +9,8 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [showRetryModal, setShowRetryModal] = useState(false);
+  const [retryRequirements, setRetryRequirements] = useState('');
   const queryClient = useQueryClient();
 
   // Fetch specification
@@ -18,7 +20,14 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
       const response = await axios.get(`/specifications/${projectId}`);
       return response.data;
     },
-    enabled: !!projectId
+    enabled: !!projectId,
+    retry: (failureCount, error) => {
+      // Don't retry on 404 errors (no specification exists yet)
+      if (error?.response?.status === 404) {
+        return false;
+      }
+      return failureCount < 3;
+    }
   });
 
   // Fetch specification status
@@ -60,6 +69,23 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
     }
   });
 
+  // Retry specification generation mutation
+  const retrySpecMutation = useMutation({
+    mutationFn: async (requirements) => {
+      const response = await axios.post(`/specifications/generate/${projectId}`, {
+        requirements
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['specification', projectId]);
+      queryClient.invalidateQueries(['specification-status', projectId]);
+      queryClient.invalidateQueries(['project', projectId]);
+      setShowRetryModal(false);
+      setRetryRequirements('');
+    }
+  });
+
   // Set edit content when specification loads
   useEffect(() => {
     if (specification?.content) {
@@ -85,6 +111,10 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
     approveMutation.mutate();
   };
 
+  const handleRetryGeneration = () => {
+    retrySpecMutation.mutate(retryRequirements);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -96,11 +126,12 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
     );
   }
 
-  if (error) {
+  if (error && error?.response?.status !== 404) {
     return (
       <div className="text-center p-8">
         <div className="text-6xl mb-4">❌</div>
         <p className="text-gray-600">Failed to load specification</p>
+        <p className="text-sm text-red-500 mt-2">{error?.response?.data?.detail || error.message}</p>
       </div>
     );
   }
@@ -121,6 +152,47 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
     );
   }
 
+  // Show failed state with retry option
+  if (status?.project_status === 'specification_failed') {
+    return (
+      <div className="text-center p-8">
+        <div className="text-6xl mb-4">⚠️</div>
+        <h3 className="text-lg font-medium text-red-900 mb-2">
+          Specification Generation Failed
+        </h3>
+        <p className="text-gray-600 mb-6">
+          The AI encountered an issue while generating your specification. You can try again with updated requirements.
+        </p>
+        <button
+          onClick={() => setShowRetryModal(true)}
+          className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+        >
+          🔄 Retry Generation
+        </button>
+      </div>
+    );
+  }
+
+  if (!specification && status?.project_status === 'draft') {
+    return (
+      <div className="text-center p-8">
+        <div className="text-6xl mb-4">📝</div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          No specification found
+        </h3>
+        <p className="text-gray-600 mb-6">
+          Generate a specification by providing your module requirements.
+        </p>
+        <button
+          onClick={() => setShowRetryModal(true)}
+          className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+        >
+          📝 Generate Specification
+        </button>
+      </div>
+    );
+  }
+
   if (!specification) {
     return (
       <div className="text-center p-8">
@@ -129,7 +201,7 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
           No specification found
         </h3>
         <p className="text-gray-600">
-          Generate a specification first by providing your requirements.
+          Specification not available for this project status.
         </p>
       </div>
     );
@@ -254,6 +326,63 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
               {approveMutation.error && (
                 <div className="mt-4 text-red-600 text-sm">
                   Error: {approveMutation.error.response?.data?.detail || 'Failed to approve specification'}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Retry Generation Modal */}
+      {showRetryModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-2/3 max-w-2xl shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="text-center mb-6">
+                <div className="text-4xl mb-4">🔄</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Retry Specification Generation
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Provide your module requirements below. The AI will generate a new specification based on these requirements.
+                </p>
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Module Requirements
+                </label>
+                <textarea
+                  value={retryRequirements}
+                  onChange={(e) => setRetryRequirements(e.target.value)}
+                  rows={8}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Describe what you want your Odoo module to do. Be specific about functionality, user interface requirements, and business rules..."
+                />
+              </div>
+              
+              <div className="flex justify-center space-x-3">
+                <button
+                  onClick={() => {
+                    setShowRetryModal(false);
+                    setRetryRequirements('');
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRetryGeneration}
+                  disabled={retrySpecMutation.isPending || !retryRequirements.trim()}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {retrySpecMutation.isPending ? 'Generating...' : 'Generate Specification'}
+                </button>
+              </div>
+              
+              {retrySpecMutation.error && (
+                <div className="mt-4 text-red-600 text-sm text-center">
+                  Error: {retrySpecMutation.error.response?.data?.detail || 'Failed to generate specification'}
                 </div>
               )}
             </div>

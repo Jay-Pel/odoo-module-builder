@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, Depends, BackgroundTasks
-from ..models.schemas import Specification, SpecificationGenerate
-from ..services.database import db
-from ..services.ai_agents import SpecificationAgent
-from .auth import get_current_user
+from models.schemas import Specification, SpecificationGenerate
+from services.database import db
+from services.ai_agents import SpecificationAgent
+from routers.auth import get_current_user
 import uuid
 import asyncio
 

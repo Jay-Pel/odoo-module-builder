@@ -6,8 +6,8 @@ import os
 import logging
 from datetime import datetime
 
-from ..services.database import DatabaseService
-from .auth import get_current_user
+from services.database import DatabaseService
+from routers.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 

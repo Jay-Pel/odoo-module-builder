@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
-from ..models.schemas import Project, ProjectCreate, ProjectUpdate
-from ..services.database import db
-from ..services.auth import generate_project_id
-from .auth import get_current_user
+from models.schemas import Project, ProjectCreate, ProjectUpdate
+from services.database import db
+from services.auth import generate_project_id
+from routers.auth import get_current_user
 
 router = APIRouter()
 

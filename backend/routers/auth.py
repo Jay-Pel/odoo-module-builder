@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from ..models.schemas import UserRegister, UserLogin, Token, User
-from ..services.auth import (
+from models.schemas import UserRegister, UserLogin, Token, User
+from services.auth import (
     hash_password, verify_password, create_access_token, 
     verify_token, generate_user_id
 )
-from ..services.database import db
+from services.database import db
 
 router = APIRouter()
 security = HTTPBearer()

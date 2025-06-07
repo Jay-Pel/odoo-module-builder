@@ -5,10 +5,10 @@ import json
 import os
 from datetime import datetime
 
-from .auth import get_current_user
-from ..services.database import DatabaseService
-from ..services.ai_agents import CodingAgent
-from ..models.schemas import User
+from routers.auth import get_current_user
+from services.database import DatabaseService
+from services.ai_agents import CodingAgent
+from models.schemas import User
 
 router = APIRouter(prefix="/coding", tags=["coding"])
 coding_agent = CodingAgent()
