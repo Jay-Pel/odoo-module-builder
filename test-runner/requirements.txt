@@ -1,0 +1,15 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+docker==6.1.3
+playwright==1.40.0
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-playwright==0.4.3
+anthropic==0.8.1
+httpx==0.25.2
+python-dotenv==1.0.0
+aiofiles==23.2.1
+psutil==5.9.6
+zipfile36==0.1.3
+# Note: cloudflared must be installed separately via their official installer 

@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  test-runner:
+    build: .
+    ports:
+      - "8001:8001"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - ./test_sessions:/app/test_sessions
+      - ./artifacts:/app/artifacts
+    networks:
+      - omb-network
+    restart: unless-stopped
+    depends_on:
+      - redis
+    
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - omb-network
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+networks:
+  omb-network:
+    external: true 
