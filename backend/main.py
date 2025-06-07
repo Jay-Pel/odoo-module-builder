@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import os
 
 # Import routers
-from routers import auth, projects, specifications, coding, payments, testing, uat
+from .routers import auth, projects, specifications, coding, payments, testing, uat
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

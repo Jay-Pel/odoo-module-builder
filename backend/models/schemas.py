@@ -11,6 +11,7 @@ class ProjectStatus(str, Enum):
     UAT = "uat"
     COMPLETED = "completed"
     FAILED = "failed"
+    SPECIFICATION_FAILED = "specification_failed"
 
 class OdooVersion(int, Enum):
     V14 = 14

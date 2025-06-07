@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 
 from ..services.database import DatabaseService
-from ..services.auth import get_current_user
+from .auth import get_current_user
 
 logger = logging.getLogger(__name__)
 

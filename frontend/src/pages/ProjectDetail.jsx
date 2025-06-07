@@ -25,6 +25,15 @@ const ProjectDetail = () => {
   const [uatSessionData, setUatSessionData] = useState(null);
   const [pricingData, setPricingData] = useState(null);
 
+  // Fetch project details
+  const { data: project, isLoading, error } = useQuery({
+    queryKey: ['project', id],
+    queryFn: async () => {
+      const response = await axios.get(`/projects/${id}`);
+      return response.data;
+    }
+  });
+
   // Check if code generation is in progress or completed
   const codeGenerationStatuses = ['generating_code', 'analyzing_specification', 'creating_zip', 'uploading', 'code_generated'];
   const isCurrentlyGeneratingCode = project && codeGenerationStatuses.includes(project.status);
@@ -170,15 +179,6 @@ const ProjectDetail = () => {
   const handlePaymentError = (error) => {
     console.error('Payment error:', error);
   };
-
-  // Fetch project details
-  const { data: project, isLoading, error } = useQuery({
-    queryKey: ['project', id],
-    queryFn: async () => {
-      const response = await axios.get(`/projects/${id}`);
-      return response.data;
-    }
-  });
 
   if (isLoading) {
     return (

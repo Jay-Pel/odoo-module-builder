@@ -9,14 +9,20 @@ class DatabaseService:
     def __init__(self):
         # In production, this will be handled by Cloudflare Workers
         # For local development, use SQLite
-        self.db_path = os.getenv("DATABASE_PATH", "./local_dev.db")
+        # Get the backend directory path
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        default_db_path = os.path.join(backend_dir, "local_dev.db")
+        self.db_path = os.getenv("DATABASE_PATH", default_db_path)
         self._init_local_db()
     
     def _init_local_db(self):
         """Initialize local SQLite database for development"""
         if not os.path.exists(self.db_path):
             conn = sqlite3.connect(self.db_path)
-            with open("database/schema.sql", "r") as f:
+            # Get the directory of this file to find the schema
+            current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            schema_path = os.path.join(current_dir, "database", "schema.sql")
+            with open(schema_path, "r") as f:
                 schema = f.read()
             conn.executescript(schema)
             conn.close()

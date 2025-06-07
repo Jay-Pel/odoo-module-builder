@@ -5,7 +5,7 @@ import json
 import os
 from datetime import datetime
 
-from ..services.auth import get_current_user
+from .auth import get_current_user
 from ..services.database import DatabaseService
 from ..services.ai_agents import CodingAgent
 from ..models.schemas import User

@@ -4,7 +4,7 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 import { CreditCard, Download, CheckCircle, AlertCircle, DollarSign, FileText } from 'lucide-react';
 
 // Initialize Stripe
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const PaymentForm = ({ projectId, pricing, onPaymentSuccess }) => {
   const stripe = useStripe();
