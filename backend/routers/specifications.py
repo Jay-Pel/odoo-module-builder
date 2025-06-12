@@ -84,7 +84,7 @@ async def get_specification(
     
     return Specification(**specification)
 
-@router.put("/{project_id}/approve")
+@router.post("/{project_id}/approve")
 async def approve_specification(
     project_id: str,
     current_user: dict = Depends(get_current_user)
@@ -110,7 +110,7 @@ async def approve_specification(
     
     return {"message": "Specification approved successfully"}
 
-@router.put("/{project_id}/content")
+@router.put("/{project_id}")
 async def update_specification_content(
     project_id: str,
     content: dict,

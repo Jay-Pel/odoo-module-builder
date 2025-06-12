@@ -3,7 +3,85 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import remarkBreaks from 'remark-breaks';
 import axios from 'axios';
+
+// Custom component for better formatting
+const SpecificationDisplay = ({ content }) => {
+  // Pre-process the content to ensure proper formatting
+  const formatSpecification = (text) => {
+    if (!text) return '';
+    
+    // Split by numbered sections and add proper spacing
+    let formatted = text
+      // Add line breaks before numbered sections
+      .replace(/(\d+\.\s+[A-Z][^:]*:)/g, '\n\n## $1\n')
+      // Add line breaks before bullet points
+      .replace(/(\n|^)([A-Z][^.]*\.)(\s*)([A-Z])/g, '$1$2\n\n$4')
+      // Ensure proper spacing around technical terms
+      .replace(/(product\.template|product\.client\.info|sale\.order\.line)/g, '`$1`')
+      // Add proper spacing after colons in headers
+      .replace(/([A-Z][^:]*:)(\s*)([A-Z])/g, '$1\n\n$3')
+      // Clean up multiple spaces and line breaks
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    
+    return formatted;
+  };
+
+  const formattedContent = formatSpecification(content);
+
+  return (
+    <div className="prose prose-slate max-w-none prose-headings:text-gray-900 prose-h2:text-xl prose-h2:font-semibold prose-h2:mt-8 prose-h2:mb-4 prose-p:text-gray-900 prose-p:leading-relaxed prose-li:text-gray-900 prose-strong:text-gray-900 prose-code:bg-gray-200 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:text-gray-900 prose-pre:bg-gray-100 prose-pre:border prose-pre:border-gray-300">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkBreaks]}
+        rehypePlugins={[rehypeHighlight]}
+        components={{
+          // Custom paragraph renderer with better spacing and darker text
+          p: ({ children }) => (
+            <p className="mb-4 text-gray-900 leading-relaxed font-medium">{children}</p>
+          ),
+          // Custom heading renderer with darker text
+          h2: ({ children }) => (
+            <h2 className="text-xl font-bold text-gray-900 mt-8 mb-4 pb-2 border-b-2 border-gray-400">
+              {children}
+            </h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-lg font-semibold text-gray-900 mt-6 mb-3">
+              {children}
+            </h3>
+          ),
+          // Custom list renderer with darker text
+          ul: ({ children }) => (
+            <ul className="space-y-2 mb-4">{children}</ul>
+          ),
+          li: ({ children }) => (
+            <li className="text-gray-900 leading-relaxed font-medium">{children}</li>
+          ),
+          // Custom code renderer with better contrast
+          code: ({ inline, children }) => (
+            inline ? (
+              <code className="bg-gray-200 px-2 py-1 rounded text-sm font-mono text-gray-900 font-semibold border border-gray-300">
+                {children}
+              </code>
+            ) : (
+              <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto border border-gray-300">
+                <code className="text-sm font-mono text-gray-900">{children}</code>
+              </pre>
+            )
+          ),
+          // Custom strong/bold renderer with darker text
+          strong: ({ children }) => (
+            <strong className="font-bold text-gray-900">{children}</strong>
+          )
+        }}
+      >
+        {formattedContent}
+      </ReactMarkdown>
+    </div>
+  );
+};
 
 const SpecificationEditor = ({ projectId, onApprove }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -30,7 +108,7 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
     }
   });
 
-  // Fetch specification status
+  // Fetch project status
   const { data: status } = useQuery({
     queryKey: ['specification-status', projectId],
     queryFn: async () => {
@@ -38,39 +116,11 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
       return response.data;
     },
     enabled: !!projectId,
-    refetchInterval: 2000 // Poll every 2 seconds when generating
+    refetchInterval: 3000 // Poll every 3 seconds during generation
   });
 
-  // Update specification mutation
-  const updateMutation = useMutation({
-    mutationFn: async (content) => {
-      const response = await axios.put(`/specifications/${projectId}/content`, {
-        content
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['specification', projectId]);
-      setIsEditing(false);
-    }
-  });
-
-  // Approve specification mutation
-  const approveMutation = useMutation({
-    mutationFn: async () => {
-      const response = await axios.put(`/specifications/${projectId}/approve`);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['specification', projectId]);
-      queryClient.invalidateQueries(['project', projectId]);
-      setShowApprovalModal(false);
-      if (onApprove) onApprove();
-    }
-  });
-
-  // Retry specification generation mutation
-  const retrySpecMutation = useMutation({
+  // Generate specification mutation
+  const generateSpecMutation = useMutation({
     mutationFn: async (requirements) => {
       const response = await axios.post(`/specifications/generate/${projectId}`, {
         requirements
@@ -78,48 +128,137 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['specification', projectId]);
-      queryClient.invalidateQueries(['specification-status', projectId]);
-      queryClient.invalidateQueries(['project', projectId]);
       setShowRetryModal(false);
       setRetryRequirements('');
+      queryClient.invalidateQueries(['specification', projectId]);
+      queryClient.invalidateQueries(['specification-status', projectId]);
     }
   });
 
-  // Set edit content when specification loads
-  useEffect(() => {
-    if (specification?.content) {
-      setEditContent(specification.content);
+  // Update specification mutation
+  const updateSpecMutation = useMutation({
+    mutationFn: async (content) => {
+      const response = await axios.put(`/specifications/${projectId}`, {
+        content
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      setIsEditing(false);
+      queryClient.invalidateQueries(['specification', projectId]);
     }
-  }, [specification]);
+  });
+
+  // Approve specification mutation
+  const approveSpecMutation = useMutation({
+    mutationFn: async () => {
+      const finalContent = isEditing ? editContent : (specification?.content || '');
+      
+      // First save any edits
+      if (isEditing && editContent !== specification?.content) {
+        await updateSpecMutation.mutateAsync(finalContent);
+      }
+      
+      // Then approve the specification
+      const approveResponse = await axios.post(`/specifications/${projectId}/approve`);
+      
+      return { approve: approveResponse.data };
+    },
+    onSuccess: async (data) => {
+      console.log('Specification approved successfully:', data);
+      
+      // Close modal and update UI first
+      setShowApprovalModal(false);
+      setIsEditing(false);
+      queryClient.invalidateQueries(['specification', projectId]);
+      queryClient.invalidateQueries(['specification-status', projectId]);
+      queryClient.invalidateQueries(['project', projectId]);
+      
+      // Call the onApprove callback to switch to Code tab
+      if (onApprove) {
+        onApprove();
+      }
+      
+      // Then try to start code generation (don't block approval on this)
+      try {
+        console.log('Starting code generation...');
+        await axios.post(`/coding/generate-module/${projectId}`);
+        console.log('Code generation started successfully');
+      } catch (codeGenError) {
+        console.error('Code generation failed to start:', codeGenError);
+        // Don't prevent approval completion if code generation fails
+      }
+    },
+    onError: (error) => {
+      console.error('Approval failed:', error);
+      
+      // Check if it's actually an approval error or just code generation
+      if (error?.response?.status === 400 && error?.response?.data?.detail?.includes('already approved')) {
+        // Specification is already approved, just close modal and proceed
+        setShowApprovalModal(false);
+        setIsEditing(false);
+        queryClient.invalidateQueries(['specification', projectId]);
+        queryClient.invalidateQueries(['specification-status', projectId]);
+        queryClient.invalidateQueries(['project', projectId]);
+        if (onApprove) {
+          onApprove();
+        }
+      } else {
+        // Show error to user
+        alert('Failed to approve specification. Please try again.');
+      }
+    }
+  });
+
+  const handleRetryGeneration = () => {
+    if (retryRequirements.trim()) {
+      generateSpecMutation.mutate(retryRequirements);
+    }
+  };
 
   const handleEdit = () => {
-    setEditContent(specification.content || '');
+    setEditContent(specification?.content || '');
     setIsEditing(true);
   };
 
   const handleSave = () => {
-    updateMutation.mutate(editContent);
+    updateSpecMutation.mutate(editContent);
   };
 
   const handleCancel = () => {
-    setEditContent(specification.content || '');
     setIsEditing(false);
+    setEditContent('');
   };
 
   const handleApprove = () => {
-    approveMutation.mutate();
+    setShowApprovalModal(true);
   };
 
-  const handleRetryGeneration = () => {
-    retrySpecMutation.mutate(retryRequirements);
+  const confirmApproval = () => {
+    console.log('Starting approval process...');
+    
+    // Add a timeout fallback to close modal if something goes wrong
+    const timeoutId = setTimeout(() => {
+      console.log('Approval timeout - forcing modal close');
+      setShowApprovalModal(false);
+      if (onApprove) {
+        onApprove();
+      }
+    }, 10000); // 10 second fallback
+    
+    // Clear timeout if mutation completes normally
+    approveSpecMutation.mutate(undefined, {
+      onSettled: () => {
+        clearTimeout(timeoutId);
+      }
+    });
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
+      <div className="flex justify-center items-center p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading specification...</p>
         </div>
       </div>
@@ -136,43 +275,23 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
     );
   }
 
-  // Show generation status
+  // Show generation status if generating
   if (status?.project_status === 'generating_specification') {
     return (
       <div className="text-center p-8">
-        <div className="text-6xl mb-4">🤖</div>
+        <div className="text-6xl mb-4">🔄</div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">
-          AI is generating your specification...
+          Generating Specification
         </h3>
         <p className="text-gray-600 mb-4">
-          This usually takes 30-60 seconds. The page will update automatically.
+          Our AI is analyzing your requirements and creating the specification...
         </p>
-        <div className="animate-pulse bg-gray-200 h-4 rounded w-64 mx-auto"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
       </div>
     );
   }
 
-  // Show failed state with retry option
-  if (status?.project_status === 'specification_failed') {
-    return (
-      <div className="text-center p-8">
-        <div className="text-6xl mb-4">⚠️</div>
-        <h3 className="text-lg font-medium text-red-900 mb-2">
-          Specification Generation Failed
-        </h3>
-        <p className="text-gray-600 mb-6">
-          The AI encountered an issue while generating your specification. You can try again with updated requirements.
-        </p>
-        <button
-          onClick={() => setShowRetryModal(true)}
-          className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-        >
-          🔄 Retry Generation
-        </button>
-      </div>
-    );
-  }
-
+  // Show generate button if no specification exists
   if (!specification && status?.project_status === 'draft') {
     return (
       <div className="text-center p-8">
@@ -185,75 +304,71 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
         </p>
         <button
           onClick={() => setShowRetryModal(true)}
-          className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
         >
-          📝 Generate Specification
+          Generate Specification
         </button>
       </div>
     );
   }
 
-  if (!specification) {
+  // Show retry option if generation failed
+  if (status?.project_status === 'specification_failed') {
     return (
       <div className="text-center p-8">
-        <div className="text-6xl mb-4">📝</div>
+        <div className="text-6xl mb-4">❌</div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">
-          No specification found
+          Specification Generation Failed
         </h3>
-        <p className="text-gray-600">
-          Specification not available for this project status.
+        <p className="text-gray-600 mb-6">
+          There was an error generating the specification. Would you like to try again?
         </p>
+        <button
+          onClick={() => setShowRetryModal(true)}
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+        >
+          Retry Generation
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-medium text-gray-900">Module Specification</h2>
-          <p className="text-sm text-gray-500">
-            {specification.is_approved ? (
-              <span className="text-green-600 font-medium">✅ Approved</span>
-            ) : (
-              <span className="text-yellow-600 font-medium">⏳ Pending approval</span>
-            )}
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          {!isEditing && !specification.is_approved && (
+      <div className="flex justify-between items-center p-4 border-b">
+        <h3 className="text-lg font-medium">Module Specification</h3>
+        <div className="flex space-x-2">
+          {!isEditing ? (
             <>
               <button
                 onClick={handleEdit}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
               >
-                ✏️ Edit
+                Edit
               </button>
               <button
-                onClick={() => setShowApprovalModal(true)}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+                onClick={handleApprove}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium"
+                disabled={!specification?.content}
               >
-                ✅ Approve
+                Approve Specifications
               </button>
             </>
-          )}
-          
-          {isEditing && (
+          ) : (
             <>
               <button
                 onClick={handleCancel}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                disabled={updateMutation.isPending}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50"
+                disabled={updateSpecMutation.isPending}
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
               >
-                {updateMutation.isPending ? 'Saving...' : 'Save'}
+                {updateSpecMutation.isPending ? 'Saving...' : 'Save'}
               </button>
             </>
           )}
@@ -261,130 +376,88 @@ const SpecificationEditor = ({ projectId, onApprove }) => {
       </div>
 
       {/* Content */}
-      {isEditing ? (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Edit Specification (Markdown)
-            </label>
-            <textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              rows={20}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
-              placeholder="Enter your specification in Markdown format..."
-            />
-          </div>
-          
-          {updateMutation.error && (
-            <div className="text-red-600 text-sm">
-              Error: {updateMutation.error.response?.data?.detail || 'Failed to update specification'}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="prose prose-sm max-w-none bg-white border border-gray-200 rounded-lg p-6">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight]}
-            className="markdown-content"
-          >
-            {specification.content}
-          </ReactMarkdown>
-        </div>
-      )}
-
-      {/* Approval Modal */}
-      {showApprovalModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <div className="text-4xl mb-4">✅</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Approve Specification?
-              </h3>
-              <p className="mt-2 text-sm text-gray-500 mb-6">
-                Once approved, this specification will be used to generate your Odoo module code. 
-                You can still make changes later if needed.
-              </p>
-              <div className="flex justify-center space-x-3">
-                <button
-                  onClick={() => setShowApprovalModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleApprove}
-                  disabled={approveMutation.isPending}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
-                >
-                  {approveMutation.isPending ? 'Approving...' : 'Approve'}
-                </button>
-              </div>
-              
-              {approveMutation.error && (
-                <div className="mt-4 text-red-600 text-sm">
-                  Error: {approveMutation.error.response?.data?.detail || 'Failed to approve specification'}
-                </div>
-              )}
+      <div className="flex-1 overflow-hidden bg-white">
+        {isEditing ? (
+          <div className="h-full flex flex-col">
+            <div className="flex-1 p-4">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="w-full h-full min-h-[600px] p-4 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm leading-6"
+                placeholder="Edit your specification here..."
+              />
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="h-full overflow-auto">
+            <div className="p-6">
+              <SpecificationDisplay content={specification?.content} />
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Retry Generation Modal */}
       {showRetryModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-2/3 max-w-2xl shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="text-center mb-6">
-                <div className="text-4xl mb-4">🔄</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Retry Specification Generation
-                </h3>
-                <p className="text-sm text-gray-500">
-                  Provide your module requirements below. The AI will generate a new specification based on these requirements.
-                </p>
-              </div>
-              
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Module Requirements
-                </label>
-                <textarea
-                  value={retryRequirements}
-                  onChange={(e) => setRetryRequirements(e.target.value)}
-                  rows={8}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Describe what you want your Odoo module to do. Be specific about functionality, user interface requirements, and business rules..."
-                />
-              </div>
-              
-              <div className="flex justify-center space-x-3">
-                <button
-                  onClick={() => {
-                    setShowRetryModal(false);
-                    setRetryRequirements('');
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleRetryGeneration}
-                  disabled={retrySpecMutation.isPending || !retryRequirements.trim()}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {retrySpecMutation.isPending ? 'Generating...' : 'Generate Specification'}
-                </button>
-              </div>
-              
-              {retrySpecMutation.error && (
-                <div className="mt-4 text-red-600 text-sm text-center">
-                  Error: {retrySpecMutation.error.response?.data?.detail || 'Failed to generate specification'}
-                </div>
-              )}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
+            <h3 className="text-lg font-medium mb-4">Generate Specification</h3>
+            <p className="text-gray-600 mb-4">
+              Please provide your module requirements. Be as detailed as possible.
+            </p>
+            <textarea
+              value={retryRequirements}
+              onChange={(e) => setRetryRequirements(e.target.value)}
+              className="w-full h-40 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Describe your Odoo module requirements..."
+            />
+            <div className="flex justify-end space-x-3 mt-4">
+              <button
+                onClick={() => setShowRetryModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRetryGeneration}
+                disabled={!retryRequirements.trim() || generateSpecMutation.isPending}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                {generateSpecMutation.isPending ? 'Generating...' : 'Generate Specification'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approval Confirmation Modal */}
+      {showApprovalModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-medium mb-4">Approve Specification</h3>
+            <p className="text-gray-600 mb-4">
+              Are you ready to approve this specification and automatically start code generation? 
+              {isEditing && ' Any unsaved changes will be saved automatically.'}
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+              <p className="text-sm text-blue-800">
+                ✨ After approval, code generation will start immediately and you'll be redirected to the Code tab to monitor progress.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowApprovalModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmApproval}
+                disabled={approveSpecMutation.isPending}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+              >
+                {approveSpecMutation.isPending ? 'Approving...' : 'Approve & Start Coding'}
+              </button>
             </div>
           </div>
         </div>

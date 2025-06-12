@@ -1,0 +1,934 @@
+INFO:     Will watch for changes in these directories: ['/Users/jeremipelletier/Documents/GitHub/odoo-module-builder/backend']
+INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [94548] using WatchFiles
+[00:26:49] INFO     [2m2025-06-11T04:26:49.524857Z[0m [[32m[1minfo  coding.py:20
+                    [0m] [1mCodingAgent initialized successfully[0m             
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+INFO:     Started server process [94603]
+INFO:     Waiting for application startup.
+           INFO     [2m2025-06-11T04:26:49.851983Z[0m [[32m[1minfo    main.py:24
+                    [0m] [1m🚀 OMB v3 API Starting...      [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+                    [36mversion[0m=[35m1.0.0[0m                                 
+INFO:     Application startup complete.
+Anthropic client initialized successfully
+INFO:     127.0.0.1:49891 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49917 - "POST /api/v1/specifications/generate-with-gemini HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49937 - "POST /specifications/generate-with-gemini HTTP/1.1" 405 Method Not Allowed
+WARNING:  Invalid HTTP request received.
+INFO:     127.0.0.1:49996 - "POST /projects/ HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:50014 - "POST /auth/register HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:50029 - "POST /auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50043 - "POST /auth/register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50059 - "POST /auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50060 - "POST /projects/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50081 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50083 - "POST /projects/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50094 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50096 - "POST /specifications/generate/98dc3833-4019-4480-849d-6c636be7fec7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50159 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50160 - "GET /specifications/98dc3833-4019-4480-849d-6c636be7fec7/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50178 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50179 - "GET /specifications/98dc3833-4019-4480-849d-6c636be7fec7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50180 - "POST /specifications/98dc3833-4019-4480-849d-6c636be7fec7/approve HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50197 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50199 - "POST /coding/generate-module/98dc3833-4019-4480-849d-6c636be7fec7 HTTP/1.1" 500 Internal Server Error
+WARNING:  WatchFiles detected changes in 'routers/coding.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+[00:36:04] INFO     [2m2025-06-11T04:36:04.524681Z[0m [[32m[1minfo    main.py:27
+                    [0m] [1m🛑 OMB v3 API Shutting down... [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+INFO:     Application shutdown complete.
+INFO:     Finished server process [94603]
+[00:36:07] INFO     [2m2025-06-11T04:36:07.567335Z[0m [[32m[1minfo  coding.py:20
+                    [0m] [1mCodingAgent initialized successfully[0m             
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+INFO:     Started server process [96818]
+INFO:     Waiting for application startup.
+           INFO     [2m2025-06-11T04:36:07.862175Z[0m [[32m[1minfo    main.py:24
+                    [0m] [1m🚀 OMB v3 API Starting...      [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+                    [36mversion[0m=[35m1.0.0[0m                                 
+INFO:     Application startup complete.
+Anthropic client initialized successfully
+INFO:     127.0.0.1:50339 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50340 - "POST /coding/generate-module/98dc3833-4019-4480-849d-6c636be7fec7 HTTP/1.1" 500 Internal Server Error
+WARNING:  WatchFiles detected changes in 'routers/coding.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+[00:39:05] INFO     [2m2025-06-11T04:39:05.772223Z[0m [[32m[1minfo    main.py:27
+                    [0m] [1m🛑 OMB v3 API Shutting down... [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+INFO:     Application shutdown complete.
+INFO:     Finished server process [96818]
+[00:39:06] INFO     [2m2025-06-11T04:39:06.774193Z[0m [[32m[1minfo  coding.py:20
+                    [0m] [1mCodingAgent initialized successfully[0m             
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+INFO:     Started server process [97389]
+INFO:     Waiting for application startup.
+[00:39:07] INFO     [2m2025-06-11T04:39:07.130817Z[0m [[32m[1minfo    main.py:24
+                    [0m] [1m🚀 OMB v3 API Starting...      [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+                    [36mversion[0m=[35m1.0.0[0m                                 
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'routers/coding.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+[00:39:16] INFO     [2m2025-06-11T04:39:16.932297Z[0m [[32m[1minfo    main.py:27
+                    [0m] [1m🛑 OMB v3 API Shutting down... [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+INFO:     Application shutdown complete.
+INFO:     Finished server process [97389]
+Anthropic client initialized successfully
+[00:39:17] INFO     [2m2025-06-11T04:39:17.845777Z[0m [[32m[1minfo  coding.py:20
+                    [0m] [1mCodingAgent initialized successfully[0m             
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+INFO:     Started server process [97436]
+INFO:     Waiting for application startup.
+[00:39:18] INFO     [2m2025-06-11T04:39:18.119289Z[0m [[32m[1minfo    main.py:24
+                    [0m] [1m🚀 OMB v3 API Starting...      [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+                    [36mversion[0m=[35m1.0.0[0m                                 
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'routers/coding.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+[00:41:38] INFO     [2m2025-06-11T04:41:38.411836Z[0m [[32m[1minfo    main.py:27
+                    [0m] [1m🛑 OMB v3 API Shutting down... [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+INFO:     Application shutdown complete.
+INFO:     Finished server process [97436]
+Anthropic client initialized successfully
+[00:41:39] INFO     [2m2025-06-11T04:41:39.429183Z[0m [[32m[1minfo  coding.py:20
+                    [0m] [1mCodingAgent initialized successfully[0m             
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+INFO:     Started server process [97850]
+INFO:     Waiting for application startup.
+           INFO     [2m2025-06-11T04:41:39.754914Z[0m [[32m[1minfo    main.py:24
+                    [0m] [1m🚀 OMB v3 API Starting...      [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+                    [36mversion[0m=[35m1.0.0[0m                                 
+INFO:     Application startup complete.
+Anthropic client initialized successfully
+INFO:     127.0.0.1:50451 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50453 - "POST /coding/generate-module/98dc3833-4019-4480-849d-6c636be7fec7 HTTP/1.1" 200 OK
+[00:41:48] INFO     [2m2025-06-11T04:41:48.742459Z[0m [[32m[1minfo  coding.py:98
+                    [0m] [1mStarting code generation      [0m                   
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35m98dc3833-4019-4480-849d-6             
+                    c636be7fec7[0m                                              
+[00:41:50] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+[00:43:37] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+[00:44:05] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+           INFO     [2m2025-06-11T04:44:05.059965Z[0m [[32m[1minfo coding.py:194
+                    [0m] [1mCode generation completed     [0m                   
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mcomplexity_score[0m=[35m32[0m                           
+                    [36mfiles_count[0m=[35m7[0m                                 
+                    [36mfinal_price[0m=[35m66.0[0m                              
+                    [36mproject_id[0m=[35m98dc3833-4019-4480-849d-              
+                    6c636be7fec7[0m                                             
+Step 0: Testing Anthropic API connection...
+API test response: API test successful
+✅ API connection test successful
+Step 1: Generating initial code draft...
+Failed to parse JSON from response: Expecting value: line 1 column 1 (char 0)
+Response text (first 500 chars): ```json
+{
+    "__manifest__.py": "{\n    'name': 'Test Inventory Module',\n    'version': '1.0.0',\n    'category': 'Inventory',\n    'summary': 'Basic inventory tracking system',\n    'description': '''\n        A basic, standalone inventory tracking system that allows users to manage\n        a list of products, tracking their name, Stock Keeping Unit (SKU),\n        quantity on hand, and storage location.\n        \n        Key Features:\n        - Simple product management\n        - SKU uni...
+Step 2: Refining and improving code...
+Code generation completed successfully!
+Error creating module build: table module_builds has no column named build_size
+INFO:     127.0.0.1:50489 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50492 - "GET /projects/98dc3833-4019-4480-849d-6c636be7fec7 HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 426, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__
+    return await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/applications.py", line 1106, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/applications.py", line 122, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/errors.py", line 184, in __call__
+    raise exc
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/routing.py", line 274, in app
+    raw_response = await run_endpoint_function(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/Users/jeremipelletier/Documents/GitHub/odoo-module-builder/backend/routers/projects.py", line 55, in get_project
+    return Project(**project)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pydantic/main.py", line 164, in __init__
+    __pydantic_self__.__pydantic_validator__.validate_python(data, self_instance=__pydantic_self__)
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Project
+status
+  Input should be 'draft', 'generating_specification', 'specification_generated', 'specification_approved', 'specification_failed', 'generating', 'testing', 'uat', 'completed' or 'failed' [type=enum, input_value='code_generated', input_type=str]
+INFO:     127.0.0.1:50702 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50839 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50861 - "POST /auth/register HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:50863 - "POST /auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50885 - "POST /auth/register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50887 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50932 - "OPTIONS /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50932 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50932 - "GET /projects/ HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:50935 - "OPTIONS /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50935 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50935 - "OPTIONS /projects/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50935 - "GET /projects/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50935 - "OPTIONS /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50935 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50935 - "OPTIONS /specifications/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50968 - "OPTIONS /specifications/bdf56650-cb44-4cf2-9d76-7c1888de1a14/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50935 - "GET /specifications/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50968 - "GET /specifications/bdf56650-cb44-4cf2-9d76-7c1888de1a14/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50968 - "OPTIONS /coding/generate-module/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50968 - "POST /coding/generate-module/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+[00:50:50] INFO     [2m2025-06-11T04:50:50.958031Z[0m [[32m[1minfo  coding.py:98
+                    [0m] [1mStarting code generation      [0m                   
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-4cf2-9d76-7             
+                    c1888de1a14[0m                                              
+[00:50:52] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+[00:52:50] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+[00:53:18] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+           INFO     [2m2025-06-11T04:53:18.557537Z[0m [[32m[1minfo coding.py:194
+                    [0m] [1mCode generation completed     [0m                   
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mcomplexity_score[0m=[35m32[0m                           
+                    [36mfiles_count[0m=[35m7[0m                                 
+                    [36mfinal_price[0m=[35m66.0[0m                              
+                    [36mproject_id[0m=[35mbdf56650-cb44-4cf2-9d76-              
+                    7c1888de1a14[0m                                             
+Step 0: Testing Anthropic API connection...
+API test response: API test successful
+✅ API connection test successful
+Step 1: Generating initial code draft...
+Failed to parse JSON from response: Expecting value: line 1 column 1 (char 0)
+Response text (first 500 chars): ```json
+{
+    "__manifest__.py": "{\n    'name': 'Hammock E-commerce Dropshipping',\n    'version': '1.0.0',\n    'category': 'Website/E-commerce',\n    'summary': 'Complete dropshipping solution for hammock e-commerce',\n    'description': '''\nHammock E-commerce Dropshipping Module\n=====================================\n\nThis module provides a complete solution for setting up a dropshipping e-commerce website focused on camping hammocks.\n\nFeatures:\n---------\n* Product import from externa...
+Step 2: Refining and improving code...
+Code generation completed successfully!
+Error creating module build: table module_builds has no column named build_size
+INFO:     127.0.0.1:50935 - "POST /coding/generate-module/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:50979 - "GET /specifications/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50980 - "GET /specifications/bdf56650-cb44-4cf2-9d76-7c1888de1a14/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50990 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 426, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__
+    return await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/applications.py", line 1106, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/applications.py", line 122, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/errors.py", line 184, in __call__
+    raise exc
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/routing.py", line 274, in app
+    raw_response = await run_endpoint_function(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/Users/jeremipelletier/Documents/GitHub/odoo-module-builder/backend/routers/projects.py", line 55, in get_project
+    return Project(**project)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pydantic/main.py", line 164, in __init__
+    __pydantic_self__.__pydantic_validator__.validate_python(data, self_instance=__pydantic_self__)
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Project
+status
+  Input should be 'draft', 'generating_specification', 'specification_generated', 'specification_approved', 'specification_failed', 'generating', 'testing', 'uat', 'completed' or 'failed' [type=enum, input_value='code_generated', input_type=str]
+INFO:     127.0.0.1:50980 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 426, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__
+    return await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/applications.py", line 1106, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/applications.py", line 122, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/errors.py", line 184, in __call__
+    raise exc
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/routing.py", line 274, in app
+    raw_response = await run_endpoint_function(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/Users/jeremipelletier/Documents/GitHub/odoo-module-builder/backend/routers/projects.py", line 55, in get_project
+    return Project(**project)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pydantic/main.py", line 164, in __init__
+    __pydantic_self__.__pydantic_validator__.validate_python(data, self_instance=__pydantic_self__)
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Project
+status
+  Input should be 'draft', 'generating_specification', 'specification_generated', 'specification_approved', 'specification_failed', 'generating', 'testing', 'uat', 'completed' or 'failed' [type=enum, input_value='code_generated', input_type=str]
+INFO:     127.0.0.1:50979 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 426, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__
+    return await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/applications.py", line 1106, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/applications.py", line 122, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/errors.py", line 184, in __call__
+    raise exc
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/routing.py", line 274, in app
+    raw_response = await run_endpoint_function(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/Users/jeremipelletier/Documents/GitHub/odoo-module-builder/backend/routers/projects.py", line 55, in get_project
+    return Project(**project)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pydantic/main.py", line 164, in __init__
+    __pydantic_self__.__pydantic_validator__.validate_python(data, self_instance=__pydantic_self__)
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Project
+status
+  Input should be 'draft', 'generating_specification', 'specification_generated', 'specification_approved', 'specification_failed', 'generating', 'testing', 'uat', 'completed' or 'failed' [type=enum, input_value='code_generated', input_type=str]
+INFO:     127.0.0.1:51013 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/uvicorn/protocols/http/httptools_impl.py", line 426, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__
+    return await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/applications.py", line 1106, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/applications.py", line 122, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/errors.py", line 184, in __call__
+    raise exc
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/routing.py", line 274, in app
+    raw_response = await run_endpoint_function(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+  File "/Users/jeremipelletier/Documents/GitHub/odoo-module-builder/backend/routers/projects.py", line 55, in get_project
+    return Project(**project)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pydantic/main.py", line 164, in __init__
+    __pydantic_self__.__pydantic_validator__.validate_python(data, self_instance=__pydantic_self__)
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Project
+status
+  Input should be 'draft', 'generating_specification', 'specification_generated', 'specification_approved', 'specification_failed', 'generating', 'testing', 'uat', 'completed' or 'failed' [type=enum, input_value='code_generated', input_type=str]
+WARNING:  WatchFiles detected changes in 'models/schemas.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+[00:54:55] INFO     [2m2025-06-11T04:54:55.482996Z[0m [[32m[1minfo    main.py:27
+                    [0m] [1m🛑 OMB v3 API Shutting down... [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+INFO:     Application shutdown complete.
+INFO:     Finished server process [97850]
+[00:54:56] INFO     [2m2025-06-11T04:54:56.532864Z[0m [[32m[1minfo  coding.py:20
+                    [0m] [1mCodingAgent initialized successfully[0m             
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+INFO:     Started server process [782]
+INFO:     Waiting for application startup.
+           INFO     [2m2025-06-11T04:54:56.973025Z[0m [[32m[1minfo    main.py:24
+                    [0m] [1m🚀 OMB v3 API Starting...      [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+                    [36mversion[0m=[35m1.0.0[0m                                 
+INFO:     Application startup complete.
+Anthropic client initialized successfully
+INFO:     127.0.0.1:51133 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51136 - "GET /projects/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51153 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51156 - "POST /projects/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51158 - "POST /specifications/generate/31c03257-a201-41a4-b96b-c76e8440b8b5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51201 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51201 - "OPTIONS /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51205 - "OPTIONS /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51201 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51205 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 51208) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+[00:58:29] INFO     [2m2025-06-11T04:58:29.444512Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m1[0m                           
+INFO:     connection open
+INFO:     127.0.0.1:51219 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51221 - "GET /specifications/31c03257-a201-41a4-b96b-c76e8440b8b5/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51223 - "POST /specifications/31c03257-a201-41a4-b96b-c76e8440b8b5/approve HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51264 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51278 - "OPTIONS /testing/start/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+[00:59:47] ERROR    Failed to start testing for project            testing.py:65
+                    bdf56650-cb44-4cf2-9d76-7c1888de1a14:                       
+INFO:     127.0.0.1:51278 - "POST /testing/start/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 500 Internal Server Error
+INFO:     ('127.0.0.1', 51282) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+[00:59:59] INFO     [2m2025-06-11T04:59:59.152087Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m2[0m                           
+INFO:     127.0.0.1:51284 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     connection closed
+           INFO     [2m2025-06-11T04:59:59.159687Z[0m    websocket_manager.py:30
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    disconnected        [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mremaining_connections[0m=[35m1[0                        
+                    m                                                           
+INFO:     127.0.0.1:51284 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 51287) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+           INFO     [2m2025-06-11T04:59:59.171477Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m2[0m                           
+INFO:     connection open
+INFO:     127.0.0.1:51293 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51322 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51387 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'routers/coding.py'. Reloading...
+INFO:     Shutting down
+[01:01:12] INFO     [2m2025-06-11T05:01:12.449943Z[0m    websocket_manager.py:30
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    disconnected        [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mremaining_connections[0m=[35m1[0                        
+                    m                                                           
+           INFO     [2m2025-06-11T05:01:12.451632Z[0m    websocket_manager.py:30
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    disconnected        [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mremaining_connections[0m=[35m0[0                        
+                    m                                                           
+INFO:     connection closed
+INFO:     connection closed
+INFO:     Waiting for application shutdown.
+           INFO     [2m2025-06-11T05:01:12.551236Z[0m [[32m[1minfo    main.py:27
+                    [0m] [1m🛑 OMB v3 API Shutting down... [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+INFO:     Application shutdown complete.
+INFO:     Finished server process [782]
+[01:01:15] INFO     [2m2025-06-11T05:01:15.638544Z[0m [[32m[1minfo  coding.py:20
+                    [0m] [1mCodingAgent initialized successfully[0m             
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+INFO:     Started server process [2186]
+INFO:     Waiting for application startup.
+           INFO     [2m2025-06-11T05:01:15.943122Z[0m [[32m[1minfo    main.py:24
+                    [0m] [1m🚀 OMB v3 API Starting...      [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+                    [36mversion[0m=[35m1.0.0[0m                                 
+INFO:     Application startup complete.
+INFO:     ('127.0.0.1', 51403) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+           INFO     [2m2025-06-11T05:01:15.944882Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m1[0m                           
+INFO:     connection open
+INFO:     ('127.0.0.1', 51405) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+           INFO     [2m2025-06-11T05:01:15.959677Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m2[0m                           
+INFO:     connection open
+WARNING:  WatchFiles detected changes in 'routers/coding.py'. Reloading...
+INFO:     Shutting down
+[01:01:23] INFO     [2m2025-06-11T05:01:23.423310Z[0m    websocket_manager.py:30
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    disconnected        [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mremaining_connections[0m=[35m1[0                        
+                    m                                                           
+           INFO     [2m2025-06-11T05:01:23.425341Z[0m    websocket_manager.py:30
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    disconnected        [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mremaining_connections[0m=[35m0[0                        
+                    m                                                           
+INFO:     connection closed
+INFO:     connection closed
+INFO:     Waiting for application shutdown.
+           INFO     [2m2025-06-11T05:01:23.525071Z[0m [[32m[1minfo    main.py:27
+                    [0m] [1m🛑 OMB v3 API Shutting down... [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2186]
+Anthropic client initialized successfully
+[01:01:24] INFO     [2m2025-06-11T05:01:24.584223Z[0m [[32m[1minfo  coding.py:20
+                    [0m] [1mCodingAgent initialized successfully[0m             
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+INFO:     Started server process [2227]
+INFO:     Waiting for application startup.
+           INFO     [2m2025-06-11T05:01:24.884169Z[0m [[32m[1minfo    main.py:24
+                    [0m] [1m🚀 OMB v3 API Starting...      [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+                    [36mversion[0m=[35m1.0.0[0m                                 
+INFO:     Application startup complete.
+INFO:     ('127.0.0.1', 51423) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+[01:01:26] INFO     [2m2025-06-11T05:01:26.696662Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m1[0m                           
+INFO:     connection open
+INFO:     ('127.0.0.1', 51425) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+           INFO     [2m2025-06-11T05:01:26.714276Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m2[0m                           
+INFO:     connection open
+Anthropic client initialized successfully
+INFO:     127.0.0.1:51441 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+[01:01:35] INFO     [2m2025-06-11T05:01:35.684481Z[0m    websocket_manager.py:30
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    disconnected        [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mremaining_connections[0m=[35m1[0                        
+                    m                                                           
+INFO:     connection closed
+INFO:     127.0.0.1:51470 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51471 - "OPTIONS /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51472 - "OPTIONS /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51471 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51472 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51554 - "GET /coding/download/98dc3833-4019-4480-849d-6c636be7fec7 HTTP/1.1" 500 Internal Server Error
+WARNING:  WatchFiles detected changes in 'routers/coding.py'. Reloading...
+INFO:     Shutting down
+[01:07:04] INFO     [2m2025-06-11T05:07:04.329080Z[0m    websocket_manager.py:30
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    disconnected        [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mremaining_connections[0m=[35m0[0                        
+                    m                                                           
+INFO:     connection closed
+INFO:     Waiting for application shutdown.
+           INFO     [2m2025-06-11T05:07:04.430585Z[0m [[32m[1minfo    main.py:27
+                    [0m] [1m🛑 OMB v3 API Shutting down... [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2227]
+[01:07:05] INFO     [2m2025-06-11T05:07:05.477705Z[0m [[32m[1minfo  coding.py:20
+                    [0m] [1mCodingAgent initialized successfully[0m             
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+INFO:     Started server process [3311]
+INFO:     Waiting for application startup.
+           INFO     [2m2025-06-11T05:07:05.821998Z[0m [[32m[1minfo    main.py:24
+                    [0m] [1m🚀 OMB v3 API Starting...      [0m                  
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mservice[0m=[35momb-v3-api[0m                            
+                    [36mversion[0m=[35m1.0.0[0m                                 
+INFO:     Application startup complete.
+INFO:     ('127.0.0.1', 51622) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+[01:07:07] INFO     [2m2025-06-11T05:07:07.695318Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m1[0m                           
+INFO:     connection open
+Anthropic client initialized successfully
+INFO:     127.0.0.1:51629 - "POST /auth/login HTTP/1.1" 200 OK
+[01:07:16] INFO     [2m2025-06-11T05:07:16.608518Z[0m [[32m[1minfo coding.py:368
+                    [0m] [1mRegenerating module for download[0m                 
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35m98dc3833-4019-4480-849d-              
+                    6c636be7fec7[0m                                             
+[01:07:18] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+[01:09:05] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+[01:09:32] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+Step 0: Testing Anthropic API connection...
+API test response: API test successful
+✅ API connection test successful
+Step 1: Generating initial code draft...
+Failed to parse JSON from response: Expecting value: line 1 column 1 (char 0)
+Response text (first 500 chars): ```json
+{
+    "__manifest__.py": "{\n    'name': 'Test Inventory Module',\n    'version': '1.0.0',\n    'category': 'Inventory',\n    'summary': 'Basic inventory tracking system',\n    'description': '''\n        A simple, standalone inventory tracking system that allows users to manage\n        a list of products, tracking their name, SKU, quantity on hand, and storage location.\n        \n        Key Features:\n        - Product management with unique SKU validation\n        - Simple quantity ...
+Step 2: Refining and improving code...
+Code generation completed successfully!
+INFO:     127.0.0.1:51631 - "GET /coding/download/98dc3833-4019-4480-849d-6c636be7fec7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51688 - "OPTIONS /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51688 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51688 - "OPTIONS /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 51697) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+[01:10:38] INFO     [2m2025-06-11T05:10:38.059729Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m2[0m                           
+INFO:     127.0.0.1:51688 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51699 - "OPTIONS /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     connection closed
+           INFO     [2m2025-06-11T05:10:38.072078Z[0m    websocket_manager.py:30
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    disconnected        [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mremaining_connections[0m=[35m1[0                        
+                    m                                                           
+INFO:     127.0.0.1:51699 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 51702) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+           INFO     [2m2025-06-11T05:10:38.079210Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m2[0m                           
+INFO:     connection open
+INFO:     127.0.0.1:51699 - "OPTIONS /coding/download/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+[01:10:42] INFO     [2m2025-06-11T05:10:42.524848Z[0m [[32m[1minfo coding.py:368
+                    [0m] [1mRegenerating module for download[0m                 
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-4cf2-9d76-              
+                    7c1888de1a14[0m                                             
+[01:10:44] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+[15:29:18] INFO     Retrying request to /v1/messages in     _base_client.py:1112
+                    0.487252 seconds                                            
+[22:55:48] INFO     Retrying request to /v1/messages in     _base_client.py:1112
+                    0.939995 seconds                                            
+[01:13:05] ERROR    [2m2025-06-12T05:13:05.401243Z[0m              coding.py:388
+                    [[31m[1merror    [0m] [1mFailed to download                 
+                    module     [0m                                              
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36merror[0m=[35m'Code generation failed:                   
+                    Request timed out.'[0m                                      
+                    [36mproject_id[0m=[35mbdf56650-cb44-4cf2-9d76-              
+                    7c1888de1a14[0m                                             
+Step 0: Testing Anthropic API connection...
+API test response: API test successful
+✅ API connection test successful
+Step 1: Generating initial code draft...
+Error generating module code: Request timed out.
+Full traceback: Traceback (most recent call last):
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_transports/default.py", line 66, in map_httpcore_exceptions
+    yield
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_transports/default.py", line 228, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_backends/sync.py", line 126, in read
+    with map_exceptions(exc_map):
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/contextlib.py", line 153, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/anthropic/_base_client.py", line 1023, in request
+    response = self._client.send(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 901, in send
+    response = self._send_handling_auth(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 929, in _send_handling_auth
+    response = self._send_handling_redirects(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 966, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 1002, in _send_single_request
+    response = transport.handle_request(request)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_transports/default.py", line 227, in handle_request
+    with map_httpcore_exceptions():
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/contextlib.py", line 153, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_transports/default.py", line 83, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/jeremipelletier/Documents/GitHub/odoo-module-builder/backend/services/ai_agents.py", line 227, in generate_module_code
+    initial_response = self.client.messages.create(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/anthropic/_utils/_utils.py", line 283, in wrapper
+    return func(*args, **kwargs)
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/anthropic/resources/messages/messages.py", line 978, in create
+    return self._post(
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/anthropic/_base_client.py", line 1293, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+  File "/Users/jeremipelletier/.pyenv/versions/3.10.13/lib/python3.10/site-packages/anthropic/_base_client.py", line 1041, in request
+    raise APITimeoutError(request=request) from err
+anthropic.APITimeoutError: Request timed out.
+
+INFO:     127.0.0.1:51699 - "GET /coding/download/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:51688 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 403 Forbidden
+           INFO     [2m2025-06-12T05:13:05.412518Z[0m    websocket_manager.py:30
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    disconnected        [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mremaining_connections[0m=[35m1[0                        
+                    m                                                           
+           INFO     [2m2025-06-12T05:13:05.414833Z[0m    websocket_manager.py:30
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    disconnected        [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mremaining_connections[0m=[35m0[0                        
+                    m                                                           
+INFO:     127.0.0.1:51782 - "GET /projects/ HTTP/1.1" 403 Forbidden
+INFO:     connection closed
+INFO:     connection closed
+INFO:     127.0.0.1:58000 - "GET /projects/ HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:58024 - "OPTIONS /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58024 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58024 - "GET /projects/ HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:58026 - "OPTIONS /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58026 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58026 - "OPTIONS /projects/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58026 - "GET /projects/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58044 - "OPTIONS /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58044 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 58065) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+[01:23:01] INFO     [2m2025-06-12T05:23:01.864022Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m1[0m                           
+INFO:     127.0.0.1:58067 - "OPTIONS /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     connection open
+INFO:     127.0.0.1:58069 - "OPTIONS /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58067 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+           INFO     [2m2025-06-12T05:23:01.878293Z[0m    websocket_manager.py:30
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    disconnected        [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mremaining_connections[0m=[35m0[0                        
+                    m                                                           
+INFO:     127.0.0.1:58069 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     ('127.0.0.1', 58072) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+           INFO     [2m2025-06-12T05:23:01.889501Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m1[0m                           
+INFO:     connection open
+INFO:     127.0.0.1:58075 - "OPTIONS /coding/download/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+[01:23:05] INFO     [2m2025-06-12T05:23:05.829234Z[0m [[32m[1minfo coding.py:368
+                    [0m] [1mRegenerating module for download[0m                 
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-4cf2-9d76-              
+                    7c1888de1a14[0m                                             
+[01:23:07] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+[01:25:05] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+[01:25:33] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           
+Step 0: Testing Anthropic API connection...
+API test response: API test successful
+✅ API connection test successful
+Step 1: Generating initial code draft...
+Failed to parse JSON from response: Expecting value: line 1 column 1 (char 0)
+Response text (first 500 chars): ```json
+{
+    "__manifest__.py": "{\n    'name': 'Hammock E-commerce Dropshipping',\n    'version': '1.0.0',\n    'category': 'Website/E-commerce',\n    'summary': 'Complete dropshipping solution for hammock e-commerce',\n    'description': '''\nHammock E-commerce Dropshipping Module\n=====================================\n\nThis module provides a complete solution for setting up a dropshipping e-commerce website focused on camping hammocks.\n\nFeatures:\n---------\n* Product import from externa...
+Step 2: Refining and improving code...
+Code generation completed successfully!
+INFO:     127.0.0.1:58075 - "GET /coding/download/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58081 - "GET /projects/bdf56650-cb44-4cf2-9d76-7c1888de1a14 HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 58084) - "WebSocket /ws/bdf56650-cb44-4cf2-9d76-7c1888de1a14" [accepted]
+           INFO     [2m2025-06-12T05:25:33.087451Z[0m    websocket_manager.py:22
+                    [[32m[1minfo     [0m] [1mWebSocket                          
+                    connected           [0m                                     
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-                        
+                    4cf2-9d76-7c1888de1a14[0m                                   
+                    [36mtotal_connections[0m=[35m2[0m                           
+           INFO     [2m2025-06-12T05:25:33.093155Z[0m [[32m[1minfo coding.py:368
+                    [0m] [1mRegenerating module for download[0m                 
+                    [[0m[1m[34mrouters.coding[0m][0m                            
+                    [36mproject_id[0m=[35mbdf56650-cb44-4cf2-9d76-              
+                    7c1888de1a14[0m                                             
+[01:25:34] INFO     HTTP Request: POST                           _client.py:1013
+                    https://api.anthropic.com/v1/messages                       
+                    "HTTP/1.1 200 OK"                                           

@@ -1,24 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, Clock, AlertCircle, Download, Loader2, FileCode, Package, Upload } from 'lucide-react';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 const CodeGenerationProgress = ({ projectId, onComplete, onError }) => {
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isConnected, addMessageHandler } = useWebSocket(projectId);
 
   useEffect(() => {
     if (projectId) {
-      pollProgress();
+      fetchInitialStatus();
     }
   }, [projectId]);
 
-  const pollProgress = async () => {
+  useEffect(() => {
+    // Set up WebSocket message handler for real-time updates
+    const removeHandler = addMessageHandler((message) => {
+      console.log('WebSocket message received:', message);
+      
+      if (message.type === 'status_update') {
+        setProgress(prev => ({
+          ...prev,
+          status: message.data.status,
+          message: message.data.message,
+          current_step: message.data.current_step,
+          total_steps: message.data.total_steps
+        }));
+        setLoading(false);
+        
+        // Check completion status
+        if (message.data.status === 'code_generated') {
+          onComplete && onComplete(message.data);
+        } else if (message.data.status === 'failed') {
+          setError(message.data.message || 'Code generation failed');
+          onError && onError(message.data.message);
+        }
+      }
+    });
+
+    return removeHandler; // Cleanup handler on unmount
+  }, [addMessageHandler, onComplete, onError]);
+
+  const fetchInitialStatus = async () => {
     try {
       setLoading(true);
       setError(null);
       
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/coding/progress/${projectId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      
+      // Get project details to check current status
+      const response = await fetch(`${baseUrl}/projects/${projectId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -29,31 +62,93 @@ const CodeGenerationProgress = ({ projectId, onComplete, onError }) => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      setProgress(data);
-
-      // Check if we need to continue polling
-      const activeStatuses = [
-        'generating_code', 
-        'analyzing_specification', 
-        'creating_zip', 
-        'uploading'
-      ];
-
-      if (activeStatuses.includes(data.status)) {
-        // Continue polling every 2 seconds
-        setTimeout(pollProgress, 2000);
-      } else if (data.status === 'code_generated') {
-        onComplete && onComplete(data);
-      } else if (data.status === 'code_generation_failed') {
-        setError('Code generation failed. Please try again.');
-        onError && onError('Code generation failed');
-      }
+      const project = await response.json();
+      
+      setProgress({
+        status: project.status,
+        project_id: projectId,
+        current_step: 1,
+        total_steps: 4,
+        message: getStatusMessage(project.status)
+      });
       
     } catch (err) {
-      console.error('Error polling progress:', err);
-      setError('Failed to get generation progress');
+      console.error('Error fetching initial status:', err);
+      setError('Failed to get project status');
       onError && onError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusMessage = (status) => {
+    const messages = {
+      'analyzing_specification': 'AI is reading and understanding your requirements',
+      'generating_code': 'Creating Odoo module files with Claude AI',
+      'creating_zip': 'Packaging module files into downloadable archive',
+      'uploading': 'Saving module and calculating pricing',
+      'code_generated': 'Your Odoo module is ready for download',
+      'failed': 'Something went wrong. Please try again.'
+    };
+    return messages[status] || 'Processing...';
+  };
+
+  const handleDownload = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      
+      // Show loading state
+      setLoading(true);
+      
+      // Create a download request with extended timeout for module generation
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+      
+      const response = await fetch(`${baseUrl}/coding/download/${projectId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status}`);
+      }
+
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'module.zip';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Convert response to blob and trigger download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      alert('Module downloaded successfully!');
+      
+    } catch (error) {
+      console.error('Download failed:', error);
+      if (error.name === 'AbortError') {
+        alert('Download timed out. The module is being generated - please try again in a few minutes.');
+      } else {
+        alert('Failed to download module. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -253,7 +348,10 @@ const CodeGenerationProgress = ({ projectId, onComplete, onError }) => {
             <div className="text-sm text-gray-600">
               Module ready for download and review
             </div>
-            <button className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+            <button 
+              onClick={handleDownload}
+              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+            >
               <Download className="w-4 h-4 mr-2" />
               Download Module
             </button>

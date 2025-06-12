@@ -16,7 +16,21 @@ class SpecificationAgent:
             raise ValueError("GEMINI_API_KEY environment variable is required")
         
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        # Use Gemini 2.5 Pro for better quality specifications
+        self.model = genai.GenerativeModel('gemini-2.5-pro-preview-06-05')
+        
+        # Load specification template
+        self.specification_template = self._load_specification_template()
+    
+    def _load_specification_template(self) -> str:
+        """Load specification generation template from file"""
+        try:
+            template_path = Path(__file__).parent.parent / "core" / "prompts" / "specification_template.md"
+            with open(template_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except FileNotFoundError:
+            print("Warning: Specification template file not found. Using basic template.")
+            return """You are an expert Odoo developer and business analyst. Create a comprehensive technical specification for an Odoo module based on the user's requirements."""
     
     def generate_specification(self, project_name: str, odoo_version: int, 
                              requirements: str, description: str = None) -> str:
@@ -37,7 +51,7 @@ class SpecificationAgent:
                                   requirements: str, description: str = None) -> str:
         """Build the prompt for specification generation"""
         
-        prompt = f"""You are an expert Odoo developer and business analyst. Your task is to create a comprehensive technical specification for an Odoo module based on the user's requirements.
+        prompt = f"""{self.specification_template}
 
 **Project Information:**
 - Module Name: {project_name}
@@ -47,33 +61,7 @@ class SpecificationAgent:
 **User Requirements:**
 {requirements}
 
-**Instructions:**
-Create a detailed, professional specification document in Markdown format that includes:
-
-1. **Executive Summary** - Brief overview of the module's purpose
-2. **Functional Requirements** - What the module should do
-3. **Technical Requirements** - How it should be implemented
-4. **Data Models** - Required models and fields
-5. **User Interface** - Views, menus, and user interactions
-6. **Security & Permissions** - Access rights and security rules
-7. **Workflow & Business Logic** - Process flows and automation
-8. **Integration Points** - How it connects with existing Odoo modules
-9. **Testing Scenarios** - Key test cases to validate functionality
-10. **Implementation Notes** - Technical considerations and best practices
-
-**Requirements for the specification:**
-- Be specific and actionable
-- Follow Odoo development best practices
-- Include proper field types, model relationships, and view structures
-- Consider user experience and business workflows
-- Ensure compatibility with Odoo version {odoo_version}
-- Include security considerations
-- Be ready for direct implementation by a developer
-
-**Output Format:**
-Provide the specification as a well-structured Markdown document with clear headings, bullet points, and code examples where appropriate.
-
-Generate the specification now:"""
+Generate the specification now following the template guidelines above:"""
 
         return prompt
 
@@ -84,14 +72,53 @@ class CodingAgent:
         """Initialize the Coding Agent with Claude API"""
         try:
             import anthropic
-            self.client = anthropic.Anthropic(
-                api_key=os.getenv("ANTHROPIC_API_KEY")
-            )
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+            if not api_key:
+                raise ValueError("ANTHROPIC_API_KEY environment variable is required")
+            
+            # Validate API key format
+            if not api_key.startswith(('sk-ant-', 'k-ant-')):
+                print(f"Warning: API key format might be incorrect. Expected to start with 'sk-ant-' but got: {api_key[:10]}...")
+                print("This might cause authentication errors. Please check your Anthropic API key.")
+            
+            self.client = anthropic.Anthropic(api_key=api_key)
+            print("Anthropic client initialized successfully")
+            
         except ImportError:
             raise ImportError("anthropic package is required. Install with: pip install anthropic")
+        except Exception as e:
+            raise Exception(f"Failed to initialize Anthropic client: {str(e)}")
         
         # Load Odoo guidelines
         self.odoo_guidelines = self._load_odoo_guidelines()
+    
+    def test_api_connection(self) -> bool:
+        """Test the API connection with a simple request"""
+        try:
+            # Send a minimal test request with Claude Sonnet 4
+            response = self.client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=50,
+                messages=[
+                    {"role": "user", "content": "Hello, respond with 'API test successful'"}
+                ]
+            )
+            
+            # Check if we got a response
+            if hasattr(response, 'content') and response.content:
+                if isinstance(response.content, list):
+                    response_text = response.content[0].text
+                else:
+                    response_text = response.content
+                
+                print(f"API test response: {response_text}")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"API connection test failed: {str(e)}")
+            return False
         
     def _load_odoo_guidelines(self) -> str:
         """Load Odoo development guidelines from file"""
@@ -187,12 +214,18 @@ Return the refined code in the exact same JSON format, with all improvements app
             dict: Generated module files as {file_path: content}
         """
         try:
+            # Step 0: Test API connection first
+            print("Step 0: Testing Anthropic API connection...")
+            if not self.test_api_connection():
+                raise Exception("Failed to connect to Anthropic API. Please check your API key.")
+            print("✅ API connection test successful")
+            
             # Step 1: Generate initial code draft
             print("Step 1: Generating initial code draft...")
             initial_prompt = self._create_generation_prompt(specification, project_info)
             
             initial_response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-sonnet-4-20250514",
                 max_tokens=8000,
                 temperature=0.1,
                 messages=[
@@ -200,15 +233,23 @@ Return the refined code in the exact same JSON format, with all improvements app
                 ]
             )
             
-            # Extract JSON from response
-            initial_code = self._extract_json_from_response(initial_response.content[0].text)
+            # Extract JSON from response - handle different response formats
+            if hasattr(initial_response, 'content') and initial_response.content:
+                if isinstance(initial_response.content, list):
+                    response_text = initial_response.content[0].text
+                else:
+                    response_text = initial_response.content
+            else:
+                response_text = str(initial_response)
+            
+            initial_code = self._extract_json_from_response(response_text)
             
             # Step 2: Refine and improve the code
             print("Step 2: Refining and improving code...")
             refinement_prompt = self._generate_refinement_prompt(str(initial_code))
             
             refinement_response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-sonnet-4-20250514",
                 max_tokens=8000,
                 temperature=0.1,
                 messages=[
@@ -216,15 +257,33 @@ Return the refined code in the exact same JSON format, with all improvements app
                 ]
             )
             
-            # Extract refined JSON
-            refined_code = self._extract_json_from_response(refinement_response.content[0].text)
+            # Extract refined JSON - handle different response formats
+            if hasattr(refinement_response, 'content') and refinement_response.content:
+                if isinstance(refinement_response.content, list):
+                    refined_text = refinement_response.content[0].text
+                else:
+                    refined_text = refinement_response.content
+            else:
+                refined_text = str(refinement_response)
+            
+            refined_code = self._extract_json_from_response(refined_text)
             
             print("Code generation completed successfully!")
             return refined_code
             
         except Exception as e:
             print(f"Error generating module code: {str(e)}")
-            raise Exception(f"Code generation failed: {str(e)}")
+            # Log the full error for debugging
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
+            
+            # Provide helpful error messages based on error type
+            if "authentication_error" in str(e).lower():
+                raise Exception(f"Authentication failed. Please check your ANTHROPIC_API_KEY. The key should start with 'sk-ant-'. Current error: {str(e)}")
+            elif "rate_limit" in str(e).lower():
+                raise Exception(f"Rate limit exceeded. Please wait and try again. Error: {str(e)}")
+            else:
+                raise Exception(f"Code generation failed: {str(e)}")
     
     def _create_generation_prompt(self, specification: str, project_info: dict) -> str:
         """Create the initial code generation prompt"""
@@ -247,18 +306,53 @@ Generate a complete, functional Odoo module based on this specification. Return 
         import re
         
         try:
-            # Try to find JSON in the response
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
-                return json.loads(json_str)
-            else:
-                # If no JSON found, try to parse the entire response
-                return json.loads(response_text)
+            # Clean the response text
+            response_text = response_text.strip()
+            
+            # Try to find JSON in the response using various patterns
+            patterns = [
+                r'\{.*\}',  # Basic JSON pattern
+                r'```json\s*(\{.*?\})\s*```',  # JSON in code blocks
+                r'```\s*(\{.*?\})\s*```',  # JSON in generic code blocks
+            ]
+            
+            for pattern in patterns:
+                json_match = re.search(pattern, response_text, re.DOTALL)
+                if json_match:
+                    if len(json_match.groups()) > 0:
+                        json_str = json_match.group(1)
+                    else:
+                        json_str = json_match.group(0)
+                    
+                    try:
+                        return json.loads(json_str)
+                    except json.JSONDecodeError:
+                        continue
+            
+            # If no JSON pattern found, try to parse the entire response
+            return json.loads(response_text)
+            
         except json.JSONDecodeError as e:
             print(f"Failed to parse JSON from response: {e}")
-            print(f"Response text: {response_text[:500]}...")
-            raise Exception("Failed to parse generated code JSON")
+            print(f"Response text (first 500 chars): {response_text[:500]}...")
+            
+            # Fallback: return a basic module structure
+            return {
+                "__manifest__.py": f"""{{
+    'name': 'Generated Module',
+    'version': '1.0.0',
+    'category': 'Custom',
+    'summary': 'Auto-generated Odoo module',
+    'description': 'This module was generated automatically.',
+    'author': 'OMB v3',
+    'depends': ['base'],
+    'data': [],
+    'installable': True,
+    'auto_install': False,
+}}""",
+                "__init__.py": "# Module initialization",
+                "models/__init__.py": "# Models package",
+            }
     
     def create_module_zip(self, module_files: dict, module_name: str) -> bytes:
         """

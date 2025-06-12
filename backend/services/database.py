@@ -33,6 +33,17 @@ class DatabaseService:
         conn.row_factory = sqlite3.Row  # Enable dict-like access
         return conn
     
+    async def health_check(self) -> bool:
+        """Check database connectivity and basic functionality"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.execute("SELECT 1")
+            cursor.fetchone()
+            conn.close()
+            return True
+        except Exception as e:
+            raise Exception(f"Database health check failed: {str(e)}")
+    
     # User operations
     async def create_user(self, user_id: str, email: str, hashed_password: str) -> bool:
         """Create a new user"""

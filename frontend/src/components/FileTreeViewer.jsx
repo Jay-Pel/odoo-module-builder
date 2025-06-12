@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, File, Folder, FolderOpen, FileText, Database, Settings, Image, Code } from 'lucide-react';
+import axios from 'axios';
 
 const FileTreeViewer = ({ projectId, selectedVersion = null }) => {
   const [fileTree, setFileTree] = useState([]);
@@ -19,25 +20,16 @@ const FileTreeViewer = ({ projectId, selectedVersion = null }) => {
       
       const token = localStorage.getItem('token');
       const url = selectedVersion 
-        ? `/api/coding/module-files/${projectId}?version=${selectedVersion}`
-        : `/api/coding/module-files/${projectId}`;
+        ? `/coding/module-files/${projectId}?version=${selectedVersion}`
+        : `/coding/module-files/${projectId}`;
       
-      const response = await fetch(url, {
+      const response = await axios.get(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
       });
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          setError('Module files not found. Generate code first.');
-          return;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = response.data;
       setFileTree(buildFileTreeStructure(data.files));
       setBuildInfo(data.build_info);
       

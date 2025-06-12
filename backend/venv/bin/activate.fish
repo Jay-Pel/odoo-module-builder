@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV "/Users/jeremipelletier/Documents/AI/OMBv3/backend/venv"
+set -gx VIRTUAL_ENV "/Users/jeremipelletier/Documents/GitHub/odoo-module-builder/backend/venv"
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/bin" $PATH

@@ -1,0 +1,20 @@
+# Cursor ignore file - prevents sending sensitive files to AI
+# This ensures your API keys never get sent to AI services
+
+# Environment files with real API keys
+backend/.env
+.env
+
+# Database files
+backend/local_dev.db
+*.db
+*.sqlite
+
+# Logs that might contain sensitive data
+*.log
+logs/
+
+# Any file with "secret" or "key" in the name
+*secret*
+*key*
+*password* 

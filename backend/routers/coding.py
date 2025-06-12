@@ -8,22 +8,39 @@ from datetime import datetime
 from routers.auth import get_current_user
 from services.database import DatabaseService
 from services.ai_agents import CodingAgent
+from services.websocket_manager import websocket_manager
 from models.schemas import User
+from core.logging_config import logger
 
-router = APIRouter(prefix="/coding", tags=["coding"])
-coding_agent = CodingAgent()
+router = APIRouter(tags=["coding"])
+
+# Initialize services with error handling
+try:
+    coding_agent = CodingAgent()
+    logger.info("CodingAgent initialized successfully")
+except Exception as e:
+    logger.error("Failed to initialize CodingAgent", error=str(e))
+    coding_agent = None
+
 db_service = DatabaseService()
 
 @router.post("/generate-module/{project_id}")
 async def generate_module_code(
     project_id: str,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Start module code generation process"""
     try:
+        # Check if coding agent is available
+        if coding_agent is None:
+            raise HTTPException(
+                status_code=503, 
+                detail="Code generation service is not available. Please check API configuration."
+            )
+        
         # Verify project ownership and approved specification
-        project = await db_service.get_project(project_id, current_user.id)
+        project = await db_service.get_project_by_id(project_id, current_user["id"])
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -46,13 +63,20 @@ async def generate_module_code(
         background_tasks.add_task(
             _generate_module_background_task,
             project_id,
-            current_user.id,
+            current_user["id"],
             specification['content'],
             project
         )
         
         # Update project status
         await db_service.update_project_status(project_id, 'generating_code')
+        
+        # Send WebSocket update
+        await websocket_manager.broadcast_to_project(
+            project_id, 
+            "status_update", 
+            {"status": "generating_code", "message": "Code generation started"}
+        )
         
         return {
             "message": "Module code generation started",
@@ -71,10 +95,15 @@ async def _generate_module_background_task(
 ):
     """Background task for module code generation"""
     try:
-        print(f"Starting code generation for project {project_id}")
+        logger.info("Starting code generation", project_id=project_id)
         
         # Update status: analyzing specification
         await db_service.update_project_status(project_id, 'analyzing_specification')
+        await websocket_manager.broadcast_to_project(
+            project_id, 
+            "status_update", 
+            {"status": "analyzing_specification", "message": "Analyzing specification"}
+        )
         
         # Prepare project info for the AI agent
         project_info = {
@@ -85,12 +114,22 @@ async def _generate_module_background_task(
         
         # Update status: generating code
         await db_service.update_project_status(project_id, 'generating_code')
+        await websocket_manager.broadcast_to_project(
+            project_id, 
+            "status_update", 
+            {"status": "generating_code", "message": "Generating module code with AI"}
+        )
         
         # Generate module code using AI agent
         module_files = await coding_agent.generate_module_code(specification, project_info)
         
         # Update status: creating zip
         await db_service.update_project_status(project_id, 'creating_zip')
+        await websocket_manager.broadcast_to_project(
+            project_id, 
+            "status_update", 
+            {"status": "creating_zip", "message": "Creating module package"}
+        )
         
         # Create ZIP file
         module_name = project_info['name']
@@ -138,14 +177,40 @@ async def _generate_module_background_task(
         with open(temp_storage_path, 'wb') as f:
             f.write(zip_content)
         
-        print(f"Code generation completed for project {project_id}")
-        print(f"Generated {len(module_files)} files, complexity score: {complexity_analysis['complexity_score']}")
-        print(f"Final price: ${final_price/100:.2f}")
+        # Send final WebSocket update
+        await websocket_manager.broadcast_to_project(
+            project_id, 
+            "generation_complete", 
+            {
+                "status": "code_generated",
+                "message": "Module generation completed successfully!",
+                "files_count": len(module_files),
+                "complexity_score": complexity_analysis['complexity_score'],
+                "final_price": final_price,
+                "version": current_version
+            }
+        )
+        
+        logger.info("Code generation completed", 
+                   project_id=project_id,
+                   files_count=len(module_files),
+                   complexity_score=complexity_analysis['complexity_score'],
+                   final_price=final_price/100)
         
     except Exception as e:
-        print(f"Code generation failed for project {project_id}: {str(e)}")
+        logger.error("Code generation failed", project_id=project_id, error=str(e))
         await db_service.update_project_status(project_id, 'code_generation_failed')
-        # Could also store error details in database for user feedback
+        
+        # Send error WebSocket update
+        await websocket_manager.broadcast_to_project(
+            project_id, 
+            "generation_error", 
+            {
+                "status": "code_generation_failed",
+                "message": f"Code generation failed: {str(e)}",
+                "error": str(e)
+            }
+        )
 
 @router.get("/progress/{project_id}")
 async def get_generation_progress(
@@ -275,56 +340,52 @@ async def get_module_versions(
 @router.get("/download/{project_id}")
 async def download_module(
     project_id: str,
-    version: Optional[int] = None,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Download the generated module ZIP file"""
     try:
-        project = await db_service.get_project(project_id, current_user.id)
+        project = await db_service.get_project_by_id(project_id, current_user["id"])
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
-        # Check if payment is completed (for future implementation)
-        # if project.get('status') != 'paid':
-        #     raise HTTPException(status_code=402, detail="Payment required")
+        # Check if project has code generated
+        if project.get('status') not in ['code_generated', 'completed']:
+            raise HTTPException(status_code=400, detail="Module code has not been generated yet")
         
-        # Get module builds
-        builds = await db_service.get_module_builds(project_id)
-        if not builds:
-            raise HTTPException(status_code=404, detail="No module builds found")
+        # Get specification to regenerate module on-demand
+        specification = await db_service.get_specification(project_id)
+        if not specification:
+            raise HTTPException(status_code=404, detail="Project specification not found")
         
-        # Find the requested version or latest
-        if version:
-            build = next((b for b in builds if b.get('version') == version), None)
-        else:
-            build = max(builds, key=lambda b: b.get('version', 0))
+        # Prepare project info for regeneration
+        project_info = {
+            'name': project.get('name', '').lower().replace(' ', '_'),
+            'odoo_version': project.get('odoo_version', 17),
+            'description': project.get('description', '')
+        }
         
-        if not build:
-            raise HTTPException(status_code=404, detail="Module build not found")
+        # Regenerate module files using AI agent (cached/quick generation)
+        logger.info("Regenerating module for download", project_id=project_id)
+        module_files = await coding_agent.generate_module_code(specification['content'], project_info)
         
-        # Read the ZIP file from temp storage
-        temp_storage_path = f"/tmp/modules/{project_id}_v{build['version']}.zip"
-        
-        if not os.path.exists(temp_storage_path):
-            raise HTTPException(status_code=404, detail="Module file not found")
-        
-        # Read file content
-        with open(temp_storage_path, 'rb') as f:
-            zip_content = f.read()
+        # Create ZIP file in memory
+        module_name = project_info['name']
+        zip_content = coding_agent.create_module_zip(module_files, module_name)
         
         # Return file as download
-        module_name = project.get('name', 'module').lower().replace(' ', '_')
-        filename = f"{module_name}_v{build['version']}.zip"
+        filename = f"{module_name}_odoo{project.get('odoo_version', 17)}.zip"
         
         return Response(
             content=zip_content,
             media_type="application/zip",
             headers={
-                "Content-Disposition": f"attachment; filename={filename}"
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Length": str(len(zip_content))
             }
         )
         
     except Exception as e:
+        logger.error("Failed to download module", project_id=project_id, error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to download module: {str(e)}")
 
 def _get_file_type(filename: str) -> str:

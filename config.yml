@@ -1,0 +1,84 @@
+# Odoo Module Builder v3 - Centralized Configuration
+# This file contains all configuration for the application
+# Run `python scripts/generate_env.py` to generate .env files
+
+app:
+  name: "Odoo Module Builder v3"
+  version: "1.0.0"
+  description: "SaaS platform for automated Odoo module generation with AI agents"
+
+# Development settings
+development:
+  backend:
+    host: "0.0.0.0"
+    port: 8000
+    reload: true
+    log_level: "info"
+  
+  frontend:
+    host: "localhost"
+    port: 5173
+    api_url: "http://localhost:8000"
+
+# Production settings (for reference)
+production:
+  backend:
+    host: "0.0.0.0"
+    port: 8000
+    reload: false
+    log_level: "warning"
+  
+  frontend:
+    api_url: "https://your-production-domain.com"
+
+# Database configuration
+database:
+  development:
+    type: "sqlite"
+    path: "./local_dev.db"
+  production:
+    type: "cloudflare_d1"
+    name: "omb-v3-database"
+
+# AI Services configuration
+ai_services:
+  gemini:
+    model: "gemini-2.5-pro-preview-06-05"
+    # Set GEMINI_API_KEY in your environment
+  
+  anthropic:
+    model: "claude-sonnet-4-20250514"
+    max_tokens: 8000
+    temperature: 0.1
+    # Set ANTHROPIC_API_KEY in your environment
+
+# Authentication
+auth:
+  access_token_expire_minutes: 30
+  algorithm: "HS256"
+  # Set JWT_SECRET_KEY in your environment (should be a long random string)
+
+# Payment processing
+payments:
+  stripe:
+    # Set STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY in your environment
+    webhook_endpoint_secret: ""  # Set STRIPE_WEBHOOK_SECRET in your environment
+
+# CORS settings
+cors:
+  allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+    - "http://localhost:5174" 
+    - "http://localhost:5175"
+    - "https://*.pages.dev"
+
+# Required environment variables that must be set manually
+# These are sensitive and should not be committed to version control
+required_env_vars:
+  - JWT_SECRET_KEY          # Long random string for JWT signing
+  - GEMINI_API_KEY         # Google Gemini API key
+  - ANTHROPIC_API_KEY      # Anthropic Claude API key
+  - STRIPE_SECRET_KEY      # Stripe secret key
+  - STRIPE_PUBLISHABLE_KEY # Stripe publishable key
+  - STRIPE_WEBHOOK_SECRET  # Stripe webhook secret 

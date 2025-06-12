@@ -1,4 +1,4 @@
-#!/Users/jeremipelletier/Documents/AI/OMBv3/backend/venv/bin/python3
+#!/Users/jeremipelletier/Documents/GitHub/odoo-module-builder/backend/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

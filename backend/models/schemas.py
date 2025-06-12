@@ -6,12 +6,20 @@ from enum import Enum
 # Enums
 class ProjectStatus(str, Enum):
     DRAFT = "draft"
+    GENERATING_SPECIFICATION = "generating_specification"
+    SPECIFICATION_GENERATED = "specification_generated"
+    SPECIFICATION_APPROVED = "specification_approved"
+    SPECIFICATION_FAILED = "specification_failed"
+    ANALYZING_SPECIFICATION = "analyzing_specification"
+    GENERATING_CODE = "generating_code"
+    CREATING_ZIP = "creating_zip"
+    UPLOADING = "uploading"
+    CODE_GENERATED = "code_generated"
     GENERATING = "generating"
     TESTING = "testing"
     UAT = "uat"
     COMPLETED = "completed"
     FAILED = "failed"
-    SPECIFICATION_FAILED = "specification_failed"
 
 class OdooVersion(int, Enum):
     V14 = 14

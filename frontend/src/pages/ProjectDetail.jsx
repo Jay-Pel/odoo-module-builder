@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import SpecificationEditor from '../components/SpecificationEditor';
 import FileTreeViewer from '../components/FileTreeViewer';
 import CodeGenerationProgress from '../components/CodeGenerationProgress';
@@ -12,6 +12,7 @@ import axios from 'axios';
 
 const ProjectDetail = () => {
   const { id } = useParams();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('overview');
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [isCodeGenerated, setIsCodeGenerated] = useState(false);
@@ -25,21 +26,53 @@ const ProjectDetail = () => {
   const [uatSessionData, setUatSessionData] = useState(null);
   const [pricingData, setPricingData] = useState(null);
 
-  // Fetch project details
+  // Fetch project details with auto-refresh during active processes
   const { data: project, isLoading, error } = useQuery({
     queryKey: ['project', id],
     queryFn: async () => {
       const response = await axios.get(`/projects/${id}`);
       return response.data;
-    }
+    },
+    refetchInterval: (data) => {
+      // Auto-refresh every 3 seconds if generation is in progress
+      const activeStatuses = ['analyzing_specification', 'generating_code', 'creating_zip', 'uploading', 'testing_in_progress', 'uat_in_progress'];
+      return data && activeStatuses.includes(data.status) ? 3000 : false;
+    },
+    refetchIntervalInBackground: true
   });
+  
+  // Auto-switch to appropriate tab when status changes
+  useEffect(() => {
+    if (project) {
+      if (['analyzing_specification', 'generating_code', 'creating_zip', 'uploading'].includes(project.status) && activeTab !== 'code') {
+        setActiveTab('code');
+      } else if (['testing_in_progress', 'testing_passed', 'testing_failed'].includes(project.status) && activeTab === 'overview') {
+        setActiveTab('testing');
+      } else if (['uat_in_progress', 'uat_completed'].includes(project.status) && activeTab === 'overview') {
+        setActiveTab('uat');
+      }
+    }
+  }, [project?.status]);
 
   // Check if code generation is in progress or completed
-  const codeGenerationStatuses = ['generating_code', 'analyzing_specification', 'creating_zip', 'uploading', 'code_generated'];
+  const codeGenerationStatuses = ['analyzing_specification', 'generating_code', 'creating_zip', 'uploading'];
   const isCurrentlyGeneratingCode = project && codeGenerationStatuses.includes(project.status);
   const isCurrentlyCodeGenerated = project && project.status === 'code_generated';
+  
+  // Prevent multiple generations - check both local state and server status
+  const canStartGeneration = project && 
+    project.status === 'specification_approved' && 
+    !isGeneratingCode && 
+    !isCurrentlyGeneratingCode && 
+    !isCurrentlyCodeGenerated;
 
   const handleGenerateCode = async () => {
+    // Double-check before starting generation
+    if (!canStartGeneration) {
+      alert('Code generation is not available at this time.');
+      return;
+    }
+    
     try {
       setIsGeneratingCode(true);
       const token = localStorage.getItem('token');
@@ -50,10 +83,16 @@ const ProjectDetail = () => {
       
       if (response.status === 200) {
         // Progress will be tracked by the CodeGenerationProgress component
+        // Switch to show the progress immediately
+        setActiveTab('code');
       }
     } catch (error) {
       console.error('Error starting code generation:', error);
-      alert('Failed to start code generation. Please try again.');
+      if (error.response?.status === 400) {
+        alert(error.response.data.detail || 'Code generation is already in progress or not available.');
+      } else {
+        alert('Failed to start code generation. Please try again.');
+      }
       setIsGeneratingCode(false);
     }
   };
@@ -184,8 +223,14 @@ const ProjectDetail = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading project details...</p>
+          <div className="relative">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-blue-500 mx-auto"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="animate-pulse w-4 h-4 bg-blue-500 rounded-full"></div>
+            </div>
+          </div>
+          <p className="mt-4 text-gray-600 font-medium">Loading project details...</p>
+          <p className="mt-1 text-sm text-gray-400">This may take a moment</p>
         </div>
       </div>
     );
@@ -233,32 +278,177 @@ const ProjectDetail = () => {
         {/* Progress Steps */}
         <div className="mb-8">
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Project Progress</h2>
-            <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium text-gray-900 mb-6">Project Progress</h2>
+            <div className="relative">
               {[
-                { key: 'draft', label: 'Draft', icon: '📝' },
-                { key: 'generating', label: 'Generating', icon: '⚙️' },
-                { key: 'testing', label: 'Testing', icon: '🧪' },
-                { key: 'uat', label: 'UAT', icon: '👤' },
-                { key: 'payment', label: 'Payment', icon: '💳' },
-                { key: 'completed', label: 'Completed', icon: '✅' }
-              ].map((step, index) => (
-                <div key={step.key} className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                    project.status === step.key ? 'bg-primary-600 text-white' :
-                    ['draft', 'generating', 'testing', 'uat', 'payment', 'completed'].indexOf(project.status) > index ? 'bg-green-600 text-white' :
-                    'bg-gray-200 text-gray-600'
-                  }`}>
-                    <span className="text-sm">{step.icon}</span>
+                { 
+                  key: 'draft', 
+                  label: 'Specification', 
+                  description: 'Define requirements and approve specification',
+                  icon: '📝',
+                  statuses: ['draft', 'specification_approved']
+                },
+                { 
+                  key: 'generating', 
+                  label: 'Code Generation', 
+                  description: 'AI generates complete Odoo module',
+                  icon: '⚙️',
+                  statuses: ['analyzing_specification', 'generating_code', 'creating_zip', 'uploading', 'code_generated']
+                },
+                { 
+                  key: 'testing', 
+                  label: 'Testing', 
+                  description: 'Automated testing in Docker environment',
+                  icon: '🧪',
+                  statuses: ['testing_in_progress', 'testing_passed', 'testing_failed']
+                },
+                { 
+                  key: 'uat', 
+                  label: 'User Testing', 
+                  description: 'Live testing in Odoo environment',
+                  icon: '👤',
+                  statuses: ['uat_in_progress', 'uat_completed']
+                },
+                { 
+                  key: 'payment', 
+                  label: 'Payment', 
+                  description: 'Secure payment and module download',
+                  icon: '💳',
+                  statuses: ['payment_pending', 'payment_completed']
+                },
+                { 
+                  key: 'completed', 
+                  label: 'Complete', 
+                  description: 'Module ready for production use',
+                  icon: '✅',
+                  statuses: ['completed']
+                }
+              ].map((step, index) => {
+                // Determine the single status for this step
+                const getStepStatus = () => {
+                  const currentStatus = project.status;
+                  
+                  // Check if this step is currently active (in progress)
+                  const isCurrentlyActive = step.statuses.includes(currentStatus) || 
+                                          (step.key === 'draft' && ['draft', 'generating_specification'].includes(currentStatus));
+                  
+                  // Check if this step is completed
+                  const isStepCompleted = (() => {
+                    if (step.key === 'draft') return ['specification_approved', 'analyzing_specification', 'generating_code', 'creating_zip', 'uploading', 'code_generated', 'testing_in_progress', 'testing_passed', 'uat_in_progress', 'uat_completed', 'payment_pending', 'payment_completed', 'completed'].includes(currentStatus);
+                    if (step.key === 'generating') return ['code_generated', 'testing_in_progress', 'testing_passed', 'uat_in_progress', 'uat_completed', 'payment_pending', 'payment_completed', 'completed'].includes(currentStatus);
+                    if (step.key === 'testing') return ['testing_passed', 'uat_in_progress', 'uat_completed', 'payment_pending', 'payment_completed', 'completed'].includes(currentStatus);
+                    if (step.key === 'uat') return ['uat_completed', 'payment_pending', 'payment_completed', 'completed'].includes(currentStatus);
+                    if (step.key === 'payment') return ['payment_completed', 'completed'].includes(currentStatus);
+                    return false;
+                  })();
+                  
+                  // Special handling for specification step
+                  if (step.key === 'draft') {
+                    if (currentStatus === 'draft') {
+                      return 'in_progress'; // Working on specification
+                    } else if (currentStatus === 'generating_specification') {
+                      return 'waiting_approval'; // Ready for user review/approval
+                    } else if (currentStatus === 'specification_approved' || isStepCompleted) {
+                      return 'done';
+                    }
+                    return 'ready';
+                  }
+                  
+                  // For other steps: prioritize active over completed to avoid showing both
+                  if (isCurrentlyActive) {
+                    return 'in_progress';
+                  } else if (isStepCompleted) {
+                    return 'done';
+                  }
+                  
+                  return 'ready'; // Not started yet
+                };
+                
+                const stepStatus = getStepStatus();
+                const isActive = stepStatus === 'in_progress';
+                const isCompleted = stepStatus === 'done';
+                const isWaitingApproval = stepStatus === 'waiting_approval';
+
+                return (
+                  <div key={step.key} className="relative flex items-start pb-8 last:pb-0">
+                    {/* Vertical line */}
+                    {index < 5 && (
+                      <div className={`absolute left-5 top-12 w-0.5 h-full ${
+                        isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                      }`}></div>
+                    )}
+                    
+                    {/* Step circle */}
+                    <div className={`relative flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                      isActive 
+                        ? 'bg-blue-500 border-blue-500 text-white animate-pulse' 
+                        : isCompleted 
+                        ? 'bg-green-500 border-green-500 text-white' 
+                        : isWaitingApproval
+                        ? 'bg-orange-500 border-orange-500 text-white'
+                        : 'bg-white border-gray-300 text-gray-400'
+                    }`}>
+                      {stepStatus === 'done' ? (
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : stepStatus === 'waiting_approval' ? (
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <span className="text-sm">{step.icon}</span>
+                      )}
+                    </div>
+                    
+                    {/* Step content */}
+                    <div className="ml-4 flex-1">
+                      <div className="flex items-center">
+                        <h3 className={`text-sm font-medium ${
+                          isActive ? 'text-blue-600' : 
+                          isCompleted ? 'text-green-600' : 
+                          isWaitingApproval ? 'text-orange-600' : 
+                          'text-gray-500'
+                        }`}>
+                          {step.label}
+                        </h3>
+                        {/* Show animation at the right end of text for active steps */}
+                        {stepStatus === 'in_progress' && (
+                          <div className="ml-2 flex items-center">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              In Progress
+                            </span>
+                          </div>
+                        )}
+                        {stepStatus === 'waiting_approval' && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            Waiting For Approval
+                          </span>
+                        )}
+                        {stepStatus === 'done' && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Done
+                          </span>
+                        )}
+                        {stepStatus === 'ready' && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            Ready
+                          </span>
+                        )}
+                      </div>
+                      <p className={`mt-1 text-xs ${
+                        isActive ? 'text-blue-500' : 
+                        isCompleted ? 'text-green-500' : 
+                        isWaitingApproval ? 'text-orange-500' : 
+                        'text-gray-400'
+                      }`}>
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
-                  <span className="ml-2 text-sm font-medium text-gray-900">{step.label}</span>
-                  {index < 5 && (
-                    <div className={`ml-4 w-16 h-1 ${
-                      ['draft', 'generating', 'testing', 'uat', 'payment', 'completed'].indexOf(project.status) > index ? 'bg-green-600' : 'bg-gray-200'
-                    }`}></div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -268,25 +458,36 @@ const ProjectDetail = () => {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6">
               {[
-                { key: 'overview', label: 'Overview', icon: '📊' },
-                { key: 'specification', label: 'Specification', icon: '📝' },
-                { key: 'code', label: 'Code', icon: '⚙️' },
-                { key: 'testing', label: 'Testing', icon: '🧪' },
-                { key: 'uat', label: 'UAT', icon: '👤' },
-                { key: 'payment', label: 'Payment', icon: '💳' }
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === tab.key
-                      ? 'border-primary-500 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {tab.icon} {tab.label}
-                </button>
-              ))}
+                { key: 'overview', label: 'Overview', icon: '📊', available: true },
+                { key: 'specification', label: 'Specification', icon: '📝', available: true },
+                { key: 'code', label: 'Code', icon: '⚙️', available: ['specification_approved', 'analyzing_specification', 'generating_code', 'creating_zip', 'uploading', 'code_generated'].includes(project?.status) || isCurrentlyGeneratingCode },
+                { key: 'testing', label: 'Testing', icon: '🧪', available: ['code_generated', 'testing_in_progress', 'testing_passed', 'testing_failed'].includes(project?.status) },
+                { key: 'uat', label: 'UAT', icon: '👤', available: ['testing_passed', 'uat_in_progress', 'uat_completed'].includes(project?.status) },
+                { key: 'payment', label: 'Payment', icon: '💳', available: ['uat_completed', 'payment_pending', 'payment_completed', 'completed'].includes(project?.status) }
+              ].map((tab) => {
+                const isDisabled = !tab.available;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => tab.available && setActiveTab(tab.key)}
+                    disabled={isDisabled}
+                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === tab.key
+                        ? 'border-blue-500 text-blue-600'
+                        : isDisabled
+                        ? 'border-transparent text-gray-300 cursor-not-allowed'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className={isDisabled ? 'opacity-50' : ''}>{tab.icon}</span> {tab.label}
+                    {!tab.available && activeTab !== tab.key && (
+                      <svg className="inline w-3 h-3 ml-1 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
             </nav>
           </div>
 
@@ -335,34 +536,121 @@ const ProjectDetail = () => {
 
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-3">Next Steps</h3>
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                  <div className={`border rounded-lg p-4 ${
+                    ['analyzing_specification', 'generating_code', 'creating_zip', 'uploading'].includes(project.status)
+                      ? 'bg-blue-50 border-blue-200'
+                      : project.status === 'completed'
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-blue-50 border-blue-200'
+                  }`}>
                     <div className="flex">
-                      <div className="text-blue-400 mr-3">💡</div>
-                      <div>
-                        <h4 className="text-sm font-medium text-blue-800">What's next?</h4>
-                        <ul className="mt-1 text-sm text-blue-700 list-disc list-inside space-y-1">
+                      <div className={`mr-3 ${
+                        ['analyzing_specification', 'generating_code', 'creating_zip', 'uploading'].includes(project.status)
+                          ? 'text-blue-400'
+                          : project.status === 'completed'
+                          ? 'text-green-400'
+                          : 'text-blue-400'
+                      }`}>
+                        {['analyzing_specification', 'generating_code', 'creating_zip', 'uploading'].includes(project.status) 
+                          ? '⚡' 
+                          : project.status === 'completed' 
+                          ? '🎉' 
+                          : '💡'
+                        }
+                      </div>
+                      <div className="flex-1">
+                        <h4 className={`text-sm font-medium ${
+                          ['analyzing_specification', 'generating_code', 'creating_zip', 'uploading'].includes(project.status)
+                            ? 'text-blue-800'
+                            : project.status === 'completed'
+                            ? 'text-green-800'
+                            : 'text-blue-800'
+                        }`}>
+                          {['analyzing_specification', 'generating_code', 'creating_zip', 'uploading'].includes(project.status)
+                            ? 'AI is working on your module...'
+                            : project.status === 'completed'
+                            ? 'Congratulations! Your module is complete'
+                            : 'What\'s next?'
+                          }
+                        </h4>
+                        <div className={`mt-2 text-sm ${
+                          ['analyzing_specification', 'generating_code', 'creating_zip', 'uploading'].includes(project.status)
+                            ? 'text-blue-700'
+                            : project.status === 'completed'
+                            ? 'text-green-700'
+                            : 'text-blue-700'
+                        }`}>
                           {project.status === 'draft' && (
-                            <li>Review and approve the generated specification</li>
+                            <div>
+                              <p className="mb-2">Your specification needs to be reviewed and approved before code generation can begin.</p>
+                              <button 
+                                onClick={() => setActiveTab('specification')}
+                                className="inline-flex items-center px-3 py-1 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50"
+                              >
+                                Review Specification →
+                              </button>
+                            </div>
                           )}
                           {project.status === 'generating_specification' && (
-                            <li>AI is generating your specification - check back in a few moments</li>
+                            <p>AI is analyzing your requirements and generating a detailed specification. This usually takes 1-2 minutes.</p>
                           )}
                           {project.status === 'specification_approved' && (
-                            <li>Generate your module code using AI</li>
+                            <div>
+                              <p className="mb-2">Your specification has been approved! Ready to generate your complete Odoo module.</p>
+                              <button 
+                                onClick={() => setActiveTab('code')}
+                                className="inline-flex items-center px-3 py-1 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50"
+                              >
+                                Start Code Generation →
+                              </button>
+                            </div>
+                          )}
+                          {['analyzing_specification', 'generating_code', 'creating_zip', 'uploading'].includes(project.status) && (
+                            <div>
+                              <p className="mb-2">Please wait while AI generates your module. This process typically takes 3-5 minutes.</p>
+                              <div className="flex items-center">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                                <span className="text-xs">Generation in progress...</span>
+                              </div>
+                            </div>
                           )}
                           {project.status === 'code_generated' && (
-                            <li>Start automated testing to validate your module</li>
+                            <div>
+                              <p className="mb-2">Your module code has been generated! Start automated testing to validate functionality.</p>
+                              <button 
+                                onClick={() => setActiveTab('testing')}
+                                className="inline-flex items-center px-3 py-1 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50"
+                              >
+                                Start Testing →
+                              </button>
+                            </div>
                           )}
                           {project.status === 'testing_passed' && (
-                            <li>Begin User Acceptance Testing in a live Odoo environment</li>
+                            <div>
+                              <p className="mb-2">Automated tests passed! Begin User Acceptance Testing in a live Odoo environment.</p>
+                              <button 
+                                onClick={() => setActiveTab('uat')}
+                                className="inline-flex items-center px-3 py-1 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50"
+                              >
+                                Start UAT Session →
+                              </button>
+                            </div>
                           )}
                           {project.status === 'uat_completed' && (
-                            <li>Complete payment to download your module</li>
+                            <div>
+                              <p className="mb-2">User testing completed successfully! Complete payment to download your module.</p>
+                              <button 
+                                onClick={() => setActiveTab('payment')}
+                                className="inline-flex items-center px-3 py-1 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50"
+                              >
+                                Complete Payment →
+                              </button>
+                            </div>
                           )}
                           {project.status === 'completed' && (
-                            <li>Your module is ready! Download and install in your Odoo instance</li>
+                            <p>Your custom Odoo module is ready for production use! You can download it anytime from the payment section.</p>
                           )}
-                        </ul>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -375,8 +663,9 @@ const ProjectDetail = () => {
               <SpecificationEditor 
                 projectId={project.id} 
                 onApprove={() => {
-                  // Refresh project data when specification is approved
-                  window.location.reload();
+                  // Switch to Code tab and refresh project data when specification is approved
+                  setActiveTab('code');
+                  queryClient.invalidateQueries(['project', id]);
                 }}
               />
             )}
@@ -388,18 +677,32 @@ const ProjectDetail = () => {
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-medium text-gray-900">Module Code Generation</h3>
-                    {project.status === 'specification_approved' && !isCurrentlyGeneratingCode && !isCurrentlyCodeGenerated && (
+                    {canStartGeneration && (
                       <button
                         onClick={handleGenerateCode}
                         disabled={isGeneratingCode}
                         className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
-                        {isGeneratingCode ? 'Generating...' : 'Generate Code'}
+                        {isGeneratingCode ? 'Starting Generation...' : 'Generate Code'}
                       </button>
+                    )}
+                    {isCurrentlyGeneratingCode && (
+                      <div className="flex items-center text-blue-600">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                        Generation in Progress
+                      </div>
+                    )}
+                    {isCurrentlyCodeGenerated && (
+                      <div className="flex items-center text-green-600">
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        Code Generated
+                      </div>
                     )}
                   </div>
                   
-                  {project.status === 'specification_approved' && !isCurrentlyGeneratingCode && !isCurrentlyCodeGenerated && (
+                  {canStartGeneration && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <div className="flex items-start">
                         <div className="text-blue-400 mr-3 mt-1">🚀</div>
@@ -419,7 +722,7 @@ const ProjectDetail = () => {
                     </div>
                   )}
 
-                  {project.status !== 'specification_approved' && !isCurrentlyGeneratingCode && !isCurrentlyCodeGenerated && (
+                  {!canStartGeneration && !isCurrentlyGeneratingCode && !isCurrentlyCodeGenerated && (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                       <div className="flex items-start">
                         <div className="text-gray-400 mr-3 mt-1">⏳</div>
