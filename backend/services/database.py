@@ -679,6 +679,56 @@ class DatabaseService:
             print(f"Error getting latest module version: {e}")
             return None
     
+    async def delete_project(self, project_id: str, user_id: str) -> bool:
+        """Delete a project and all associated data"""
+        try:
+            conn = self.get_connection()
+            
+            # First verify the project belongs to the user
+            cursor = conn.execute("SELECT user_id FROM projects WHERE id = ?", (project_id,))
+            row = cursor.fetchone()
+            if not row or row["user_id"] != user_id:
+                conn.close()
+                return False
+            
+            # Delete associated data in correct order to avoid foreign key constraints
+            # Delete test sessions
+            conn.execute("DELETE FROM test_sessions WHERE project_id = ?", (project_id,))
+            
+            # Delete UAT sessions  
+            conn.execute("DELETE FROM uat_sessions WHERE project_id = ?", (project_id,))
+            
+            # Delete adjustment requests
+            conn.execute("DELETE FROM adjustment_requests WHERE project_id = ?", (project_id,))
+            
+            # Delete module downloads
+            conn.execute("DELETE FROM module_downloads WHERE project_id = ?", (project_id,))
+            
+            # Delete module builds
+            conn.execute("DELETE FROM module_builds WHERE project_id = ?", (project_id,))
+            
+            # Delete specifications
+            conn.execute("DELETE FROM specifications WHERE project_id = ?", (project_id,))
+            
+            # Delete project pricing
+            conn.execute("DELETE FROM project_pricing WHERE project_id = ?", (project_id,))
+            
+            # Delete payments
+            conn.execute("DELETE FROM payments WHERE project_id = ?", (project_id,))
+            
+            # Finally delete the project itself
+            conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error deleting project: {e}")
+            if conn:
+                conn.rollback()
+                conn.close()
+            return False
+    
     async def get_project_specification(self, project_id: str) -> Optional[Dict]:
         """Get the approved specification for a project"""
         try:

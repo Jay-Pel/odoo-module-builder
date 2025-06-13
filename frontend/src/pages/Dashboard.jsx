@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectCreationModal from '../components/ProjectCreationModal';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import axios from 'axios';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, project: null });
+  const queryClient = useQueryClient();
 
   // Fetch user projects
   const { data: projects, isLoading, error } = useQuery({
@@ -18,6 +21,38 @@ const Dashboard = () => {
     }
   });
 
+  // Delete project mutation
+  const deleteProjectMutation = useMutation({
+    mutationFn: async (projectId) => {
+      const response = await axios.delete(`/projects/${projectId}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      // Refresh projects list
+      queryClient.invalidateQueries(['projects']);
+      // Close modal
+      setDeleteModal({ isOpen: false, project: null });
+    },
+    onError: (error) => {
+      console.error('Error deleting project:', error);
+      alert('Failed to delete project. Please try again.');
+    }
+  });
+
+  const handleDeleteClick = (project) => {
+    setDeleteModal({ isOpen: true, project });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteModal.project) {
+      deleteProjectMutation.mutate(deleteModal.project.id);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModal({ isOpen: false, project: null });
+  };
+
   const getStatusBadge = (status) => {
     const statusColors = {
       draft: 'bg-gray-100 text-gray-800',
@@ -26,10 +61,12 @@ const Dashboard = () => {
       specification_approved: 'bg-green-100 text-green-800',
       generating: 'bg-blue-100 text-blue-800',
       testing: 'bg-yellow-100 text-yellow-800',
+      testing_passed: 'bg-green-100 text-green-800',
       uat: 'bg-purple-100 text-purple-800',
       completed: 'bg-green-100 text-green-800',
       failed: 'bg-red-100 text-red-800',
-      specification_failed: 'bg-red-100 text-red-800'
+      specification_failed: 'bg-red-100 text-red-800',
+      code_generation_failed: 'bg-red-100 text-red-800'
     };
 
     const statusLabels = {
@@ -39,10 +76,12 @@ const Dashboard = () => {
       specification_approved: 'Spec Approved',
       generating: 'Generating',
       testing: 'Testing',
+      testing_passed: 'Testing Passed',
       uat: 'UAT',
       completed: 'Completed',
       failed: 'Failed',
-      specification_failed: 'Spec Failed'
+      specification_failed: 'Spec Failed',
+      code_generation_failed: 'Code Gen Failed'
     };
 
     return (
@@ -110,7 +149,7 @@ const Dashboard = () => {
                       In Progress
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {projects?.filter(p => ['generating_specification', 'specification_generated', 'generating', 'testing', 'uat'].includes(p.status)).length || 0}
+                      {projects?.filter(p => ['generating_specification', 'specification_generated', 'generating', 'testing', 'testing_passed', 'uat'].includes(p.status)).length || 0}
                     </dd>
                   </dl>
                 </div>
@@ -232,6 +271,12 @@ const Dashboard = () => {
                       >
                         View Details →
                       </Link>
+                      <button
+                        onClick={() => handleDeleteClick(project)}
+                        className="text-red-600 hover:text-red-700 text-sm font-medium"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -245,6 +290,15 @@ const Dashboard = () => {
       <ProjectCreationModal 
         isOpen={showCreateForm} 
         onClose={() => setShowCreateForm(false)} 
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal 
+        isOpen={deleteModal.isOpen} 
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm} 
+        itemName={deleteModal.project?.name}
+        isLoading={deleteProjectMutation.isPending}
       />
     </div>
   );

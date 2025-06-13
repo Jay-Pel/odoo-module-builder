@@ -76,4 +76,27 @@ async def update_project_status(
             detail="Failed to update project status"
         )
     
-    return {"message": "Project status updated successfully"} 
+    return {"message": "Project status updated successfully"}
+
+@router.delete("/{project_id}")
+async def delete_project(
+    project_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a project and all associated data"""
+    # Verify project exists and belongs to user
+    project = await db.get_project_by_id(project_id, current_user["id"])
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+    
+    success = await db.delete_project(project_id, current_user["id"])
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete project"
+        )
+    
+    return {"message": "Project deleted successfully"} 

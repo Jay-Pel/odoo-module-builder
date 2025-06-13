@@ -31,10 +31,16 @@
    2. Navigate to correct directories
    3. Activate correct virtual environment
    4. Install missing dependencies if any
-   5. Start backend: `uvicorn main:app --reload --host 0.0.0.0 --port 8000`
+   5. Start backend: `uvicorn main:app --reload --host 0.0.0.0 --port 8000 > server.log 2>&1 &`
+   - If server doesn't respond, check logs: `cat server.log`
+   - Wait 3-5 seconds for startup before testing endpoints
    6. Start frontend: `npm run dev`
    7. Test both servers are accessible
-   8. Test the specific functionality that was failing
+   8. **MANDATORY: Test authentication system**
+      - Test login: `curl -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d '{"email":"demo@example.com","password":"demo123"}'`
+      - Should return JWT token, not error
+      - If fails, run authentication recovery checklist (see rule 19)
+   9. Test the specific functionality that was failing
 
 ## AI Model Configuration Rules
 7. **ALWAYS use the exact model names specified in user rules:**
@@ -78,15 +84,59 @@
     - Verify it's in the correct virtual environment
     - Don't continue until import errors are resolved
 
+## Authentication & Login Rules
+15. **ALWAYS verify authentication system after restart:**
+    - Check API URL configuration: `cat frontend/.env | grep VITE_API_URL`
+    - Must be: `VITE_API_URL=http://localhost:8000` (NOT 8001)
+    - Test auth endpoints: `curl -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d '{"email":"demo@example.com","password":"demo123"}'`
+    - Should return JWT token, not "Incorrect email or password"
+
+16. **Demo user credentials must be working:**
+    - Email: `demo@example.com`
+    - Password: `demo123`
+    - If login fails, reset password hash: 
+      ```bash
+      python3 -c "from passlib.context import CryptContext; pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto'); print(pwd_context.hash('demo123'))"
+      sqlite3 local_dev.db "UPDATE users SET hashed_password = 'NEW_HASH' WHERE email = 'demo@example.com';"
+      ```
+
+17. **Authentication troubleshooting sequence:**
+    1. If connection fails, check server logs: `cat backend/server.log` and restart if needed
+    2. Test backend auth directly: `curl -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d '{"email":"demo@example.com","password":"demo123"}'`
+    3. If "Could not validate credentials" → Check API URL mismatch
+    4. If "Incorrect email or password" → Reset demo user password hash
+    5. If "Email already registered" on new users → Check unique constraint logic
+    6. Always test both registration AND login endpoints
+
+18. **Database state verification:**
+    - Check users exist: `sqlite3 local_dev.db "SELECT email FROM users LIMIT 5;"`
+    - Verify demo user: `sqlite3 local_dev.db "SELECT email, hashed_password FROM users WHERE email = 'demo@example.com';"`
+    - Check projects exist: `sqlite3 local_dev.db "SELECT id, name, status FROM projects LIMIT 5;"`
+
+19. **AUTHENTICATION RECOVERY CHECKLIST (Post-Restart)**
+    **RUN THESE STEPS IN ORDER WHEN LOGIN FAILS:**
+    1. Check database has data: `ls -la backend/local_dev.db` (should be >4KB)
+    2. Check demo user exists: `sqlite3 backend/local_dev.db "SELECT email FROM users WHERE email = 'demo@example.com';"`
+    3. If user missing, run: `cd backend && python3 -c "from services.database import DatabaseService; import bcrypt, asyncio; async def setup(): db = DatabaseService(); hash = bcrypt.hashpw('demo123'.encode(), bcrypt.gensalt()).decode(); await db.create_user('demo-user-id', 'demo@example.com', hash); print('Demo user created'); asyncio.run(setup())"`
+    4. Verify API URL: `cat frontend/.env | grep VITE_API_URL` (must be http://localhost:8000)
+    5. Test auth: `curl -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d '{"email":"demo@example.com","password":"demo123"}'`
+    6. If still fails, reset password: `cd backend && python3 -c "import sqlite3, bcrypt; hash = bcrypt.hashpw('demo123'.encode(), bcrypt.gensalt()).decode(); conn = sqlite3.connect('local_dev.db'); conn.execute('UPDATE users SET hashed_password = ? WHERE email = ?', (hash, 'demo@example.com')); conn.commit(); conn.close(); print('Password reset')"`
+
+20. **Server startup troubleshooting:**
+    - If uvicorn process exists but endpoints don't respond: `ps aux | grep uvicorn`
+    - Always check server logs first: `cat backend/server.log`
+    - Server needs 3-5 seconds to fully start up
+    - Kill hung processes: `kill -9 <PID>` before restarting
+
 ## Communication Rules
-15. **Be honest about issues:**
+21. **Be honest about issues:**
     - Don't claim success without verification
     - Admit when something isn't working
     - Focus on solving problems, not optimistic reporting
 
-16. **Take immediate action:**
+22. **Take immediate action:**
     - Fix problems as soon as they're identified
     - Don't ask for permission for obvious fixes
     - Follow through completely on each issue
 
-These rules ensure systematic problem-solving and prevent the frustrating issues that occurred where old processes interfered with the application. 
+These rules ensure systematic problem-solving and prevent the frustrating issues that occurred where old processes interfered with the application AND the recurring authentication failures that happen on every restart. The authentication recovery checklist (rule 19) is the key solution for login issues after restarts. 
